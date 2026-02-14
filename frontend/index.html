@@ -1011,7 +1011,6 @@
         }
         }
 
-
         async function requireAdminSession() {
             const { data } = await supabase.auth.getSession();
             if (data.session) return true;
@@ -1019,21 +1018,17 @@
             const email = prompt("Email de administración:");
             if (!email) return false;
 
-            const { error } = await supabase.auth.signInWithOtp({
-                email,
-                options: {
-                emailRedirectTo: window.location.origin
-                }
-            });
+            const password = prompt("Contraseña:");
+            if (!password) return false;
+
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
 
             if (error) {
-                alert("Error enviando enlace de acceso: " + error.message);
+                alert("Login fallido: " + error.message);
                 return false;
             }
 
-            alert("Te he enviado un enlace de acceso al email. Ábrelo y vuelve a pulsar 'Gestión'.");
-            return false;
-
+            return true;
         }
 
         async function logoutAdmin() {
