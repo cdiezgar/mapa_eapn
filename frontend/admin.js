@@ -9,67 +9,109 @@ let adminState = {
     catalogo: []
 };
 
-const initAdmin = async () => {
-    const session = await checkAuth();
-    if (!session) return;
-
-    document.getElementById('user-email').textContent = session.user.email;
-    await loadData();
-    initForms();
-    renderList();
+// --- FLUJO DE INICIALIZACIÓN ---
+async function start() {
+    // 1. Verificar si ya hay una sesión activa
+    const { data: { session } } = await supabase.auth.getSession();
     
-    document.getElementById('btn-logout').onclick = async () => {
-        await supabase.auth.signOut();
-        window.location.href = 'index.html';
-    };
-};
-
-const checkAuth = async () => {
-    const { data } = await supabase.auth.getSession();
-    if (data.session) return data.session;
-
-    const email = prompt("Email de Administrador:");
-    if (!email) return window.location.href = 'index.html';
-    const password = prompt("Contraseña:");
-    
-    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-        alert("Acceso denegado.");
-        window.location.href = 'index.html';
-        return null;
+    if (session) {
+        showAdminPanel(session.user);
+    } else {
+        initLoginForm();
     }
-    return signInData.session;
-};
+}
 
-const loadData = async () => {
-    const { data: ent } = await supabase.from("eapn_entidad").select("*").order("denominacion");
-    const { data: srv } = await supabase.from("vista_servicios").select("*").order("servicio");
-    const { data: cat } = await supabase.from("catalogos_servicios").select("*").order("codigo");
-    
-    adminState.entidades = ent || [];
-    adminState.servicios = srv || [];
-    adminState.catalogo = cat || [];
+// --- GESTIÓN DE LOGIN ---
+function initLoginForm() {
+    const form = document.getElementById('login-form');
+    const errorDiv = document.getElementById('login-error');
+    const errorText = document.getElementById('login-error-text');
 
-    // Llenar selects
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-pass').value;
+        const btn = document.getElementById('btn-login-submit');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="animate-spin material-symbols-outlined">sync</span> VALIDANDO...';
+        errorDiv.classList.add('hidden');
+
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            errorText.textContent = "Error: Correo o contraseña inválidos.";
+            errorDiv.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined">login</span> ACCEDER AL PANEL';
+        } else {
+            showAdminPanel(data.user);
+        }
+    };
+}
+
+async function showAdminPanel(user) {
+    // UI Toggle
+    document.getElementById('login-overlay').classList.add('hidden');
+    document.getElementById('admin-content').classList.remove('hidden');
+    document.getElementById('user-display').textContent = user.email;
+
+    // Cargar datos reales
+    await loadData();
+    initAdminEvents();
+    renderList();
+}
+
+// --- LÓGICA DE DATOS ---
+async function loadData() {
+    const [eRes, sRes, cRes] = await Promise.all([
+        supabase.from("eapn_entidad").select("*").order("denominacion"),
+        supabase.from("vista_servicios").select("*").order("servicio"),
+        supabase.from("catalogos_servicios").select("*").order("codigo")
+    ]);
+
+    adminState.entidades = eRes.data || [];
+    adminState.servicios = sRes.data || [];
+    adminState.catalogo = cRes.data || [];
+
+    // Rellenar Selects
     const selEnt = document.getElementById('admin-select-entidad');
     selEnt.innerHTML = '<option value="">Seleccione Entidad...</option>';
     adminState.entidades.forEach(e => selEnt.innerHTML += `<option value="${e.entidad_id}">${e.denominacion}</option>`);
 
     const selCat = document.getElementById('admin-select-catalogo');
-    selCat.innerHTML = '<option value="">Sin catalogar</option>';
+    selCat.innerHTML = '<option value="">-- No catalogado --</option>';
     adminState.catalogo.forEach(c => selCat.innerHTML += `<option value="${c.codigo}">${c.codigo} - ${c.nombre}</option>`);
 
     const selSec = document.querySelector('#form-servicio select[name="sector"]');
-    selSec.innerHTML = '<option value="">Sector...</option>';
+    selSec.innerHTML = '<option value="">Seleccionar Sector...</option>';
     Object.keys(CONFIG_SECTORES).forEach(s => selSec.innerHTML += `<option value="${s}">${s}</option>`);
-};
+}
+
+// --- EVENTOS DEL PANEL ---
+function initAdminEvents() {
+    document.getElementById('btn-logout').onclick = async () => {
+        await supabase.auth.signOut();
+        window.location.reload();
+    };
+
+    document.getElementById('admin-search').oninput = renderList;
+    document.getElementById('btn-crear-nuevo').onclick = resetForm;
+
+    // Handlers de formularios
+    document.getElementById('form-entidad').onsubmit = handleSave;
+    document.getElementById('form-servicio').onsubmit = handleSave;
+
+    document.getElementById('btn-delete-entidad').onclick = () => handleDelete('entidad');
+    document.getElementById('btn-delete-servicio').onclick = () => handleDelete('servicio');
+}
 
 window.switchTab = (tab) => {
     adminState.activeTab = tab;
     const isEnt = tab === 'tab-entidad';
     
-    document.getElementById('btn-tab-entidad').className = isEnt ? "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold bg-brand-red text-white" : "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100";
-    document.getElementById('btn-tab-servicio').className = !isEnt ? "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold bg-brand-red text-white" : "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100";
+    document.getElementById('btn-tab-entidad').className = isEnt ? "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold bg-brand-red text-white transition" : "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100 transition";
+    document.getElementById('btn-tab-servicio').className = !isEnt ? "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold bg-brand-red text-white transition" : "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100 transition";
     
     document.getElementById('form-entidad').classList.toggle('hidden', !isEnt);
     document.getElementById('form-servicio').classList.toggle('hidden', isEnt);
@@ -78,7 +120,7 @@ window.switchTab = (tab) => {
     renderList();
 };
 
-const resetForm = () => {
+function resetForm() {
     adminState.modo = 'create';
     adminState.selectedId = null;
     document.getElementById('form-entidad').reset();
@@ -87,9 +129,9 @@ const resetForm = () => {
     document.getElementById('form-mode-badge').textContent = 'MODO CREACIÓN';
     document.getElementById('btn-delete-entidad').classList.add('hidden');
     document.getElementById('btn-delete-servicio').classList.add('hidden');
-};
+}
 
-const renderList = () => {
+function renderList() {
     const container = document.getElementById('admin-list-container');
     const search = document.getElementById('admin-search').value.toLowerCase();
     container.innerHTML = '';
@@ -100,15 +142,18 @@ const renderList = () => {
 
     items.forEach(item => {
         const div = document.createElement('div');
-        div.className = "p-3 bg-white border rounded-lg hover:border-red-500 cursor-pointer transition shadow-sm";
+        div.className = "p-3 bg-white border rounded-lg hover:border-brand-red cursor-pointer transition shadow-sm group flex justify-between items-center";
         const title = adminState.activeTab === 'tab-entidad' ? item.denominacion : item.servicio;
-        div.innerHTML = `<div class="text-xs font-bold text-gray-800 truncate">${title}</div>`;
+        div.innerHTML = `
+            <div class="text-xs font-bold text-gray-700 truncate w-full">${title}</div>
+            <span class="material-symbols-outlined text-gray-300 group-hover:text-brand-red text-sm">edit</span>
+        `;
         div.onclick = () => setEditMode(item);
         container.appendChild(div);
     });
-};
+}
 
-const setEditMode = (item) => {
+function setEditMode(item) {
     adminState.modo = 'edit';
     document.getElementById('form-mode-badge').textContent = 'MODO EDICIÓN';
     
@@ -117,9 +162,11 @@ const setEditMode = (item) => {
         const f = document.getElementById('form-entidad');
         f.denominacion.value = item.denominacion;
         f.direccion.value = item.direccion;
+        f.telefono.value = item.telefono;
+        f.email.value = item.email || '';
+        f.logo_url.value = item.logo_url;
         f.latitud.value = item.latitud;
         f.longitud.value = item.longitud;
-        f.logo_url.value = item.logo_url;
         document.getElementById('btn-delete-entidad').classList.remove('hidden');
     } else {
         adminState.selectedId = item.servicio_id;
@@ -130,42 +177,54 @@ const setEditMode = (item) => {
         f.cod_catalogo.value = item.cod_catalogo || '';
         document.getElementById('btn-delete-servicio').classList.remove('hidden');
     }
-};
+}
 
-const initForms = () => {
-    document.getElementById('admin-search').oninput = renderList;
-    document.getElementById('btn-crear-nuevo').onclick = resetForm;
-    
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const fd = new FormData(e.target);
-        const data = Object.fromEntries(fd);
-        const isEnt = adminState.activeTab === 'tab-entidad';
+async function handleSave(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    const isEnt = adminState.activeTab === 'tab-entidad';
 
-        try {
-            if (isEnt) {
-                if (adminState.modo === 'create') await supabase.from('eapn_entidad').insert([data]);
-                else await supabase.from('eapn_entidad').update(data).eq('entidad_id', adminState.selectedId);
+    try {
+        if (isEnt) {
+            if (adminState.modo === 'create') await supabase.from('eapn_entidad').insert([data]);
+            else await supabase.from('eapn_entidad').update(data).eq('entidad_id', adminState.selectedId);
+        } else {
+            const srvData = { ...data };
+            delete srvData.entidad_id;
+            if (adminState.modo === 'create') {
+                const { data: newSrv } = await supabase.from('eapn_servicio').insert([srvData]).select().single();
+                await supabase.from('eapn_servicio_entidad').insert([{ servicio_id: newSrv.servicio_id, entidad_id: data.entidad_id }]);
             } else {
-                const srvData = { ...data };
-                delete srvData.entidad_id;
-                if (adminState.modo === 'create') {
-                    const { data: newSrv } = await supabase.from('eapn_servicio').insert([srvData]).select().single();
-                    await supabase.from('eapn_servicio_entidad').insert([{ servicio_id: newSrv.servicio_id, entidad_id: data.entidad_id }]);
-                } else {
-                    await supabase.from('eapn_servicio').update(srvData).eq('servicio_id', adminState.selectedId);
-                    await supabase.from('eapn_servicio_entidad').update({ entidad_id: data.entidad_id }).eq('servicio_id', adminState.selectedId);
-                }
+                await supabase.from('eapn_servicio').update(srvData).eq('servicio_id', adminState.selectedId);
+                // Simple update of relationship
+                await supabase.from('eapn_servicio_entidad').delete().eq('servicio_id', adminState.selectedId);
+                await supabase.from('eapn_servicio_entidad').insert([{ servicio_id: adminState.selectedId, entidad_id: data.entidad_id }]);
             }
-            alert("Operación exitosa");
-            await loadData();
-            resetForm();
-            renderList();
-        } catch (err) { alert("Error al guardar"); }
-    };
+        }
+        alert("¡Guardado correctamente!");
+        await loadData();
+        resetForm();
+        renderList();
+    } catch (err) {
+        console.error(err);
+        alert("Error al procesar la solicitud.");
+    }
+}
 
-    document.getElementById('form-entidad').onsubmit = handleSubmit;
-    document.getElementById('form-servicio').onsubmit = handleSubmit;
-};
+async function handleDelete(type) {
+    if (!confirm("¿Seguro que deseas eliminar este registro?")) return;
+    try {
+        if (type === 'entidad') {
+            await supabase.from('eapn_servicio_entidad').delete().eq('entidad_id', adminState.selectedId);
+            await supabase.from('eapn_entidad').delete().eq('entidad_id', adminState.selectedId);
+        } else {
+            await supabase.from('eapn_servicio_entidad').delete().eq('servicio_id', adminState.selectedId);
+            await supabase.from('eapn_servicio').delete().eq('servicio_id', adminState.selectedId);
+        }
+        await loadData();
+        resetForm();
+        renderList();
+    } catch (err) { alert("Error al eliminar."); }
+}
 
-initAdmin();
+start();
