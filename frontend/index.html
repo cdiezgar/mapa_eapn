@@ -24,6 +24,30 @@
         "https://uuwbyjaeuqqtsesxvvlj.supabase.co",
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1d2J5amFldXFxdHNlc3h2dmxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwODM0MzgsImV4cCI6MjA4NjY1OTQzOH0.mUmcDzSG_MslsTgUxQzKdjP7TcLKwOKVl-WeCL3m4t0"
         );
+
+        async function handleAuthCallback() {
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+
+        if (!code) return;
+
+        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+
+        if (error) {
+            console.error("Auth callback error:", error);
+            alert("No se pudo completar el login.");
+            return;
+        }
+
+        // Limpia la URL para que no se repita
+        url.searchParams.delete("code");
+        window.history.replaceState({}, document.title, url.toString());
+        }
+
+        // Ejecutar al cargar
+        await handleAuthCallback();
+
+
     </script>
     <!-- Google Icons -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,1,-50..200" />
@@ -995,17 +1019,25 @@
             const email = prompt("Email de administración:");
             if (!email) return false;
 
-            const { error } = await supabase.auth.signInWithOtp({ email });
+            const { error } = await supabase.auth.signInWithOtp({
+                email,
+                options: {
+                emailRedirectTo: window.location.origin
+                }
+            });
+
             if (error) {
                 alert("Error enviando enlace de acceso: " + error.message);
                 return false;
             }
+
             alert("Te he enviado un enlace de acceso al email. Ábrelo y vuelve a pulsar 'Gestión'.");
             return false;
-            }
 
-            async function logoutAdmin() {
-            await supabase.auth.signOut();
+        }
+
+        async function logoutAdmin() {
+                await supabase.auth.signOut();
             alert("Sesión cerrada.");
         }
 
@@ -1102,7 +1134,13 @@
         if (error) throw error;
 
         alert("Servicio eliminado.");
-        }        
+        }
+        
+        
+    await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: window.location.origin }
+    });
 
     </script>
 </body>
