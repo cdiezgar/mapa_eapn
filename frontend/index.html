@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Recursos EAPN CyL</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Leaflet (Mapa) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet MarkerCluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+    <script type="module">
+        import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+        window.supabase = createClient(
+        "https://uuwbyjaeuqqtsesxvvlj.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1d2J5amFldXFxdHNlc3h2dmxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwODM0MzgsImV4cCI6MjA4NjY1OTQzOH0.mUmcDzSG_MslsTgUxQzKdjP7TcLKwOKVl-WeCL3m4t0"
+        );
+    </script>
+    <!-- Google Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,1,-50..200" />
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { height: 100%; width: 100%; z-index: 0; }
+        
+        .bg-brand-red { background-color: #7C3844; }
+        .text-brand-red { color: #7C3844; }
+        .border-brand-red { border-color: #7C3844; }
+        
+        .bg-brand-black { background-color: #1D1D1B; }
+        .text-brand-black { color: #1D1D1B; }
+        
+        .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+            background-color: rgba(124, 56, 68, 0.6) !important;
+        }
+        .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+            background-color: rgba(124, 56, 68, 0.9) !important;
+            color: white !important;
+            font-weight: bold;
+        }
+
+        .pin-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .pin-marker:hover {
+            transform: scale(1.2) translateY(-5px); 
+            z-index: 1000 !important;
+        }
+        .icon-shadow { filter: drop-shadow(0px 3px 2px rgba(0,0,0,0.4)); }
+
+        .leaflet-tooltip.custom-tooltip-style {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+            white-space: normal;
+            width: 200px;
+        }
+        .leaflet-tooltip-top:before { border-top-color: white; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #999; }
+
+        .dropdown-check-content { display: none; }
+        .dropdown-check:hover .dropdown-check-content { display: block; }
+        .filter-label { font-size: 0.7rem; text-transform: uppercase; color: #666; font-weight: 700; margin-bottom: 2px; display: block; }
+        
+        /* Animaciones Modal */
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
+
+    <!-- AVISO DE CONEXIÓN -->
+    <div id="aviso-conexion" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 text-xs text-center relative z-50">
+        <p class="font-bold">Modo Demo Activado</p>
+        <p>No se detectó el backend. Funcionalidad de gestión deshabilitada.</p>
+    </div>
+
+    <!-- HEADER -->
+    <header class="bg-white shadow-md p-3 z-20 border-b-4 border-brand-red shrink-0">
+        <div class="flex flex-wrap items-end gap-3">
+            <div class="mr-4 mb-1">
+                <div class="font-bold text-2xl leading-none text-brand-red flex items-center gap-1">
+                    EAPN<span class="text-gray-500">CyL</span>
+                </div>
+                <div class="text-[10px] text-brand-red font-semibold tracking-wider">MAPA DE RECURSOS</div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="flex flex-col">
+                <label for="filtro-texto" class="filter-label">Buscar servicio</label>
+                <div class="relative">
+                    <input type="text" id="filtro-texto" placeholder="Nombre..." class="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 bg-gray-50 w-40 pl-7">
+                    <span class="material-symbols-outlined absolute left-1 top-1.5 text-gray-400 text-lg">search</span>
+                </div>
+            </div>
+            <div class="flex flex-col">
+                <label for="filtro-entidad" class="filter-label">Entidad</label>
+                <select id="filtro-entidad" class="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 bg-gray-50 w-40 text-ellipsis"></select>
+            </div>
+            <div class="flex flex-col">
+                <label for="filtro-sector" class="filter-label">Sector</label>
+                <select id="filtro-sector" class="border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 bg-gray-50 w-40"></select>
+            </div>
+            <div class="flex flex-col relative group">
+                <label class="filter-label">Catálogo RESO</label>
+                <button id="btn-catalogo-dropdown" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-40 text-left flex justify-between items-center text-gray-700">
+                    <span id="catalogo-selected-text" class="truncate">Seleccionar...</span>
+                    <span class="material-symbols-outlined text-sm">arrow_drop_down</span>
+                </button>
+                <div id="catalogo-dropdown-list" class="hidden absolute top-full left-0 bg-white border shadow-lg rounded mt-1 z-50 w-80 max-h-80 overflow-y-auto p-2">
+                    <div class="mb-2 pb-2 border-b flex justify-between items-center">
+                        <span class="text-xs font-bold text-gray-500">Filtrar por códigos</span>
+                        <button id="btn-clear-catalogo" class="text-xs text-brand-red hover:underline">Limpiar</button>
+                    </div>
+                    <div id="catalogo-checkboxes" class="space-y-1"></div>
+                </div>
+            </div>
+            
+            <!-- Botones Acción -->
+            <div class="flex items-end gap-2 ml-auto">
+                <button id="btn-ver-catalogo-completo" class="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm transition shadow-sm bg-brand-red" title="Catalogo RESO completo">
+                    <span class="material-symbols-outlined text-sm">list_alt</span> Catálogo
+                </button>
+                
+                <!-- NUEVO BOTÓN GESTIÓN -->
+                <button id="btn-admin" class="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm transition shadow-sm bg-brand-red" title="Administración de entidades y servicios">
+                    <span class="material-symbols-outlined text-sm">settings</span> Gestión
+                </button>
+
+                <button id="btn-limpiar" class="flex items-center gap-1 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-sm transition text-gray-700">
+                    <span class="material-symbols-outlined text-sm">filter_alt_off</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- LAYOUT PRINCIPAL -->
+    <div class="flex-1 grid grid-cols-4 overflow-hidden relative">
+        <!-- COLUMNA IZQUIERDA: ENTIDADES -->
+        <div class="col-span-1 bg-white border-r flex flex-col h-full relative z-10 min-w-[280px]">
+            <div class="p-3 bg-gray-100 font-bold text-gray-700 border-b flex justify-between items-center shrink-0">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-gray-500">apartment</span> Entidades</span>
+                <span id="contador-entidades" class="text-xs bg-gray-200 px-2 py-0.5 rounded-full font-mono">0</span>
+            </div>
+            <div id="lista-entidades" class="flex-1 overflow-y-auto"></div>
+            <div class="p-2 border-t bg-gray-50 flex justify-between items-center text-sm shrink-0">
+                <button id="btn-prev-ent" class="px-2 py-1 bg-white border rounded disabled:opacity-50 text-xs">Ant.</button>
+                <span id="info-paginacion-ent" class="text-xs text-gray-500 font-semibold font-mono">1/1</span>
+                <button id="btn-next-ent" class="px-2 py-1 bg-white border rounded disabled:opacity-50 text-xs">Sig.</button>
+            </div>
+        </div>
+
+        <!-- COLUMNA CENTRAL: MAPA -->
+        <div class="col-span-2 relative h-full bg-slate-100">
+            <div id="map"></div>
+            <!-- MODAL DETALLE PÚBLICO -->
+            <div id="modal-overlay" class="absolute inset-0 bg-black/40 z-[1000] hidden flex items-center justify-center p-4 backdrop-blur-[2px]">
+                <div id="modal-content" class="bg-white rounded-lg shadow-2xl w-full max-w-lg border-t-4 border-brand-red flex flex-col max-h-[90vh]">
+                    <div class="flex justify-between items-start p-4 border-b bg-gray-50 rounded-t-lg">
+                        <div class="flex items-center gap-4">
+                            <img id="modal-img" src="" class="w-14 h-14 object-contain bg-white border p-1 rounded-full shadow-sm">
+                            <div>
+                                <span id="modal-subtitle" class="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded inline-block mb-1"></span>
+                                <h2 id="modal-title" class="font-bold text-xl text-gray-800 leading-tight"></h2>
+                            </div>
+                        </div>
+                        <button onclick="cerrarModal()" class="text-gray-400 hover:text-red-500 transition"><span class="material-symbols-outlined">close</span></button>
+                    </div>
+                    <div id="modal-body" class="p-6 space-y-4 overflow-y-auto"></div>
+                    <div class="p-4 bg-gray-50 rounded-b-lg flex justify-end border-t">
+                        <button id="modal-btn-llegar" class="flex items-center gap-2 px-5 py-2.5 text-white rounded shadow text-sm bg-brand-red">
+                            <span class="material-symbols-outlined text-[20px]">near_me</span> Cómo llegar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: SERVICIOS -->
+        <div class="col-span-1 bg-white border-l flex flex-col h-full relative z-10 min-w-[280px]">
+            <div class="p-3 bg-gray-100 font-bold text-gray-700 border-b flex justify-between items-center shrink-0">
+                <span class="flex items-center gap-2"><span class="material-symbols-outlined text-gray-500">list</span> <span id="titulo-lista-servicios">Servicios</span></span>
+                <span id="contador-servicios" class="text-xs bg-gray-200 px-2 py-0.5 rounded-full font-mono">0</span>
+            </div>
+            <div id="lista-servicios" class="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50"></div>
+            <div class="p-2 border-t bg-gray-50 flex justify-between items-center text-sm shrink-0">
+                <button id="btn-prev-srv" class="px-2 py-1 bg-white border rounded disabled:opacity-50 text-xs">Ant.</button>
+                <span id="info-paginacion-srv" class="text-xs text-gray-500 font-semibold font-mono">1/1</span>
+                <button id="btn-next-srv" class="px-2 py-1 bg-white border rounded disabled:opacity-50 text-xs">Sig.</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- FOOTER (NUEVO) -->
+    <footer class="text-white p-2 border-t-2 border-brand-red shrink-0 z-30" style="background-color:#7C3844">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center text-xs">
+            <div class="mb-2 md:mb-0 text-center md:text-left">
+                <p class="font-bold">© 2026 EAPN Castilla y León</p>
+                <p>Red Europea de Lucha contra la Pobreza y la Exclusión Social en Castilla y León</p>
+            </div>
+            <div class="flex gap-4">
+                <a href="https://www.eapncastillayleon.es/" target="_blank" class="hover:text-brand-red hover:underline transition flex items-center gap-1">
+                    Web Oficial <span class="material-symbols-outlined text-[10px]">open_in_new</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL GESTIÓN (ÁREA PRIVADA) -->
+
+    <div id="modal-admin-overlay" class="fixed inset-0 bg-black/70 z-[2000] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col animate-[fadeIn_0.2s_ease-out] overflow-hidden">
+            <!-- Header Modal -->
+            <div class="p-4 border-b flex justify-between items-center text-white shrink-0 bg-brand-red">
+                <h3 class="font-bold text-lg flex items-center gap-2"><span class="material-symbols-outlined text-white">admin_panel_settings</span> Gestión de Recursos</h3>
+                <button onclick="cerrarAdmin()" class="hover:bg-white/20 rounded-full p-1 transition"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="flex border-b bg-gray-100 shrink-0">
+                <button onclick="switchTab('tab-entidad')" id="btn-tab-entidad" class="flex-1 py-3 text-sm font-bold border-b-4 border-brand-red text-brand-red bg-white">GESTIÓN DE ENTIDADES</button>
+                <button onclick="switchTab('tab-servicio')" id="btn-tab-servicio" class="flex-1 py-3 text-sm font-bold border-b-4 border-transparent text-gray-500 hover:text-gray-800">GESTIÓN DE SERVICIOS</button>
+            </div>
+
+            <!-- Content Area (Split View) -->
+            <div class="flex-1 flex overflow-hidden">
+                
+                <!-- IZQUIERDA: LISTA DE ITEMS -->
+                <div class="w-1/3 border-r bg-gray-50 flex flex-col">
+                    <div class="p-3 border-b bg-white">
+                        <div class="relative">
+                            <input type="text" id="admin-search" placeholder="Buscar para editar..." class="w-full border rounded p-2 pl-8 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <span class="material-symbols-outlined absolute left-2 top-2 text-gray-400 text-lg">search</span>
+                        </div>
+                        <button id="btn-crear-nuevo" class="w-full mt-2 bg-brand-red hover:bg-brand-red text-white text-xs font-bold py-2 rounded flex items-center justify-center gap-1">
+                            <span class="material-symbols-outlined text-sm">add_circle</span> CREAR NUEVO
+                        </button>
+                    </div>
+                    <div id="admin-list-container" class="flex-1 overflow-y-auto p-2 space-y-2">
+                        <!-- Lista dinámica JS -->
+                    </div>
+                </div>
+
+                <!-- DERECHA: FORMULARIO EDICIÓN -->
+                <div class="w-2/3 bg-white flex flex-col overflow-y-auto">
+                    <div class="p-6">
+                        <div id="form-header" class="mb-6 pb-2 border-b flex justify-between items-end">
+                            <h2 id="form-title" class="text-xl font-bold text-gray-800">Crear Nuevo Registro</h2>
+                            <span id="form-mode-badge" class="text-xs font-bold px-2 py-1 rounded">MODO CREACIÓN</span>
+                        </div>
+
+                        <!-- Formulario Entidad -->
+                        <form id="form-entidad" class="space-y-4">
+                            <input type="hidden" name="id" id="entidad-id">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="col-span-2">
+                                    <label class="filter-label">Denominación de la Entidad *</label>
+                                    <input type="text" name="denominacion" required class="w-full border border-gray-300 rounded p-2 text-sm focus:border-blue-500 outline-none bg-gray-50 focus:bg-white transition">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="filter-label">Dirección Postal *</label>
+                                    <input type="text" name="direccion" required class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50 focus:bg-white">
+                                </div>
+                                <div>
+                                    <label class="filter-label">Teléfono *</label>
+                                    <input type="text" name="telefono" required class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50 focus:bg-white">
+                                </div>
+                                <div>
+                                    <label class="filter-label">Email de Contacto</label>
+                                    <input type="email" name="email" class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50 focus:bg-white">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="filter-label">Sitio Web</label>
+                                    <input type="text" name="web" placeholder="Ej: www.asociacion.org" class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50 focus:bg-white">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="filter-label">URL del Logotipo *</label>
+                                    <input type="url" name="logo_url" required placeholder="https://..." class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50 focus:bg-white">
+                                    <p class="text-[10px] text-gray-400 mt-1">Debe ser una URL pública de imagen (jpg, png)</p>
+                                </div>
+                                <div>
+                                    <label class="filter-label">Latitud *</label>
+                                    <input type="number" step="any" name="latitud" required class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50 focus:bg-white">
+                                </div>
+                                <div>
+                                    <label class="filter-label">Longitud *</label>
+                                    <input type="number" step="any" name="longitud" required class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50 focus:bg-white">
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mt-6 pt-4 border-t">
+                                <button type="submit" class="flex-1 bg-brand-red hover:bg-blue-700 text-white font-bold py-2 rounded transition shadow-md">GUARDAR ENTIDAD</button>
+                                <button type="button" id="btn-delete-entidad" class="hidden px-4 bg-red-100 hover:bg-red-200 text-red-700 font-bold rounded transition border border-red-300">ELIMINAR</button>
+                            </div>
+                        </form>
+
+                        <!-- Formulario Servicio -->
+                        <form id="form-servicio" class="hidden space-y-4">
+                            <input type="hidden" name="id" id="servicio-id">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="col-span-2">
+                                    <label class="filter-label">Nombre del Servicio *</label>
+                                    <input type="text" name="servicio" required class="w-full border border-gray-300 rounded p-2 text-sm font-semibold bg-gray-50 focus:bg-white">
+                                </div>
+                                <div>
+                                    <label class="filter-label">Sector Poblacional *</label>
+                                    <select name="sector" required class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50 focus:bg-white">
+                                        <option value="">Seleccionar...</option>
+                                        <!-- Se rellena con JS -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="filter-label text-blue-700">Entidad Titular *</label>
+                                    <select name="entidad_id" id="admin-select-entidad" required class="w-full border border-blue-300 bg-blue-50 rounded p-2 text-sm focus:ring-2 focus:ring-blue-500">
+                                        <!-- Se rellena con JS -->
+                                    </select>
+                                </div>
+                                <div class="col-span-2 bg-yellow-50 p-3 rounded border border-yellow-200">
+                                    <label class="filter-label text-yellow-800">Vinculación Catálogo RESO (Opcional)</label>
+                                    <select name="cod_catalogo" id="admin-select-catalogo" class="w-full border border-yellow-300 rounded p-2 text-sm mt-1">
+                                        <option value="">-- No catalogado --</option>
+                                        <!-- Se rellena con JS -->
+                                    </select>
+                                </div>
+                                
+                                <div class="col-span-2"><hr class="my-2 border-gray-200"></div>
+                                <div class="col-span-2 text-[10px] text-gray-400 font-bold uppercase tracking-wide">Datos de contacto y ubicación (Específicos del servicio)</div>
+
+                                <div><label class="filter-label">Teléfono</label><input type="text" name="telefono" class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50"></div>
+                                <div><label class="filter-label">Email</label><input type="email" name="email" class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50"></div>
+                                <div class="col-span-2"><label class="filter-label">Dirección</label><input type="text" name="direccion" class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50"></div>
+                                
+                                <div><label class="filter-label">Latitud</label><input type="number" step="any" name="latitud" class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50"></div>
+                                <div><label class="filter-label">Longitud</label><input type="number" step="any" name="longitud" class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50"></div>
+                                
+                                <div class="col-span-2">
+                                    <label class="filter-label">Subtipo / Observaciones</label>
+                                    <input type="text" name="subtipo" class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50">
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mt-6 pt-4 border-t">
+                                <button type="submit" class="flex-1 bg-brand-red hover:bg-blue-700 text-white font-bold py-2 rounded transition shadow-md">GUARDAR SERVICIO</button>
+                                <button type="button" id="btn-delete-servicio" class="hidden px-4 bg-red-100 hover:bg-red-200 text-red-700 font-bold rounded transition border border-red-300">ELIMINAR</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL CATÁLOGO (PÚBLICO) -->
+    <div id="modal-catalogo-overlay" class="fixed inset-0 bg-black/60 z-[2000] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col animate-[fadeIn_0.2s_ease-out]">
+            <div class="p-4 border-b flex justify-between items-center bg-brand-red text-white rounded-t-lg">
+                <h3 class="font-bold text-lg flex items-center gap-2"><span class="material-symbols-outlined">menu_book</span> Catálogo de Servicios Sociales RESO</h3>
+                <button onclick="cerrarModalCatalogo()" class="hover:bg-white/20 rounded-full p-1 transition"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <div class="flex-1 overflow-hidden flex flex-col p-4 bg-gray-50">
+                <div class="overflow-auto border rounded-lg bg-white shadow-sm h-full">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-100 text-gray-700 font-bold sticky top-0 z-10 shadow-sm">
+                            <tr><th class="p-3 border-b w-24">Código</th><th class="p-3 border-b">Descripción</th><th class="p-3 border-b w-20 text-center">Info</th></tr>
+                        </thead>
+                        <tbody id="tabla-catalogo-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="p-3 border-t bg-white text-right rounded-b-lg">
+                <button onclick="cerrarModalCatalogo()" class="px-4 py-2 border rounded hover:bg-gray-100 text-sm font-medium bg-brand-red text-white">Cerrar</button>
+            </div>
+        </div>
+
+
+
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        const CONFIG_SECTORES = {
+            "POBLACIÓN GENERAL": { color: "#64748b", icon: "groups" },
+            "MUJER": { color: "#db2777", icon: "woman" },
+            "INCLUSIÓN": { color: "#E30613", icon: "favorite" },
+            "PERSONAS CON DISCAPACIDAD": { color: "#2563eb", icon: "accessibility_new" },
+            "VOLUNTARIADO": { color: "#16a34a", icon: "volunteer_activism" },
+            "TOXICOMANÍAS Y ADICCIONES": { color: "#7c3aed", icon: "medical_services" },
+            "FAMILIA": { color: "#ea580c", icon: "family_restroom" },
+            "INFANCIA (Y JUVENTUD)": { color: "#0891b2", icon: "child_care" },
+            "PERSONAS MAYORES": { color: "#d97706", icon: "elderly" },
+        };
+        const COLOR_DEFAULT = "#64748b";
+
+        let estado = {
+            entidades: [],
+            servicios: [],
+            catalogoCompleto: [],
+            entidadSeleccionada: null,
+            servicioSeleccionado: null,
+            filtros: { texto: "", entidad: "", sector: "", tipoCatalogo: "todos", catalogosSeleccionados: [] },
+            paginacionEntidades: { paginaActual: 1, itemsPorPagina: 8 },
+            paginacionServicios: { paginaActual: 1, itemsPorPagina: 4 },
+            admin: { activeTab: 'tab-entidad', modo: 'create', selectedId: null }
+        };
+
+        let map;
+        let markersGroup = L.markerClusterGroup({
+            showCoverageOnHover: false, zoomToBoundsOnClick: true, spiderfyOnMaxZoom: true, maxClusterRadius: 50
+        });
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            cargarDatos();
+            initEventos();
+        });
+
+        function initMap() {
+            map = L.map('map').setView([41.652, -4.724], 8);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; CARTO', maxZoom: 20
+            }).addTo(map);
+            markersGroup.addTo(map);
+        }
+
+        async function cargarDatos() {
+        try {
+
+            const { data: entidades } =
+            await supabase.from("eapn_entidad")
+            .select("*")
+            .order("denominacion");
+
+            const { data: servicios } =
+            await supabase
+                .from("vista_servicios") // ahora te explico esto
+                .select("*")
+                .order("servicio");
+
+            const { data: catalogo } =
+            await supabase
+                .from("catalogos_servicios")
+                .select("*")
+                .order("codigo");
+
+            estado.entidades = entidades || [];
+            estado.servicios = servicios || [];
+            estado.catalogoCompleto = catalogo || [];
+
+        } catch (error) {
+            console.warn("Error cargando datos", error);
+        }
+
+        inicializarFiltros();
+        renderApp();
+        }
+
+        function inicializarFiltros() {
+            const selEnt = document.getElementById('filtro-entidad');
+            selEnt.innerHTML = '<option value="">Todas las Entidades</option>';
+            estado.entidades.forEach(e => selEnt.innerHTML += `<option value="${e.entidad_id}">${e.denominacion}</option>`);
+
+            const selSec = document.getElementById('filtro-sector');
+            selSec.innerHTML = '<option value="">Todos los Sectores</option>';
+            // Llenar selectores del formulario de admin también
+            const adminSelSec = document.querySelector('#form-servicio select[name="sector"]');
+            adminSelSec.innerHTML = '<option value="">Seleccionar...</option>';
+            
+            Object.keys(CONFIG_SECTORES).forEach(s => {
+                selSec.innerHTML += `<option value="${s}">${s}</option>`;
+                adminSelSec.innerHTML += `<option value="${s}">${s}</option>`;
+            });
+
+            // Catálogo Checkboxes
+            const containerChecks = document.getElementById('catalogo-checkboxes');
+            containerChecks.innerHTML = '';
+            estado.catalogoCompleto.forEach(cat => {
+                const div = document.createElement('div');
+                div.className = "flex items-start gap-2 hover:bg-gray-50 p-1 rounded cursor-pointer";
+                div.innerHTML = `
+                    <input type="checkbox" value="${cat.codigo}" id="cat-${cat.codigo}" class="mt-1 cursor-pointer">
+                    <label for="cat-${cat.codigo}" class="text-xs text-gray-700 cursor-pointer select-none leading-tight">
+                        <span class="font-bold text-gray-900">${cat.codigo}</span> - ${cat.nombre}
+                    </label>
+                `;
+                div.querySelector('input').addEventListener('change', (e) => {
+                     const codigo = e.target.value;
+                     if (e.target.checked) estado.filtros.catalogosSeleccionados.push(codigo);
+                     else estado.filtros.catalogosSeleccionados = estado.filtros.catalogosSeleccionados.filter(c => c !== codigo);
+                     actualizarTextoDropdownCatalogo();
+                     resetPaginationAndRender();
+                });
+                containerChecks.appendChild(div);
+            });
+        }
+        
+        function actualizarTextoDropdownCatalogo() {
+            const count = estado.filtros.catalogosSeleccionados.length;
+            const textSpan = document.getElementById('catalogo-selected-text');
+            if (count === 0) {
+                textSpan.textContent = "Seleccionar...";
+                textSpan.classList.remove('text-brand-red', 'font-bold');
+            } else {
+                textSpan.textContent = `${count} seleccionados`;
+                textSpan.classList.add('text-brand-red', 'font-bold');
+            }
+        }
+
+        function resetPaginationAndRender() {
+            estado.paginacionEntidades.paginaActual = 1;
+            estado.paginacionServicios.paginaActual = 1;
+            actualizarFiltrosYRenderizar();
+        }
+
+        function initEventos() {
+            // Filtros
+            document.getElementById('filtro-texto').addEventListener('input', (e) => { estado.filtros.texto = e.target.value.toLowerCase(); resetPaginationAndRender(); });
+            document.getElementById('filtro-entidad').addEventListener('change', (e) => { estado.filtros.entidad = e.target.value; resetPaginationAndRender(); });
+            document.getElementById('filtro-sector').addEventListener('change', (e) => { estado.filtros.sector = e.target.value; resetPaginationAndRender(); });
+            
+            // Dropdown Catálogo
+            const btnDropdown = document.getElementById('btn-catalogo-dropdown');
+            const dropdownList = document.getElementById('catalogo-dropdown-list');
+            btnDropdown.addEventListener('click', (e) => { e.stopPropagation(); dropdownList.classList.toggle('hidden'); });
+            document.addEventListener('click', (e) => { if (!btnDropdown.contains(e.target) && !dropdownList.contains(e.target)) dropdownList.classList.add('hidden'); });
+            document.getElementById('btn-clear-catalogo').addEventListener('click', () => {
+                document.querySelectorAll('#catalogo-checkboxes input').forEach(c => c.checked = false);
+                estado.filtros.catalogosSeleccionados = [];
+                actualizarTextoDropdownCatalogo();
+                resetPaginationAndRender();
+            });
+
+            // Limpiar todo
+            document.getElementById('btn-limpiar').addEventListener('click', () => {
+                location.reload(); 
+            });
+
+            // Paginación
+            document.getElementById('btn-prev-ent').addEventListener('click', () => { if (estado.paginacionEntidades.paginaActual > 1) { estado.paginacionEntidades.paginaActual--; renderListaEntidades(); }});
+            document.getElementById('btn-next-ent').addEventListener('click', () => { 
+                const total = Math.ceil(obtenerEntidadesFiltradas().length / estado.paginacionEntidades.itemsPorPagina);
+                if (estado.paginacionEntidades.paginaActual < total) { estado.paginacionEntidades.paginaActual++; renderListaEntidades(); }
+            });
+            document.getElementById('btn-prev-srv').addEventListener('click', () => { if (estado.paginacionServicios.paginaActual > 1) { estado.paginacionServicios.paginaActual--; renderListaServicios(); }});
+            document.getElementById('btn-next-srv').addEventListener('click', () => { 
+                const total = Math.ceil(obtenerServiciosFiltrados().length / estado.paginacionServicios.itemsPorPagina);
+                if (estado.paginacionServicios.paginaActual < total) { estado.paginacionServicios.paginaActual++; renderListaServicios(); }
+            });
+
+            // Modales
+            document.getElementById('btn-ver-catalogo-completo').addEventListener('click', abrirModalCatalogo);
+            
+            // ADMIN EVENTS
+            document.getElementById('btn-admin').addEventListener('click', abrirAdmin);
+            document.getElementById('admin-search').addEventListener('input', renderAdminList);
+            document.getElementById('btn-crear-nuevo').addEventListener('click', setAdminCreateMode);
+            
+            document.getElementById('form-entidad').addEventListener('submit', handleAdminSubmit);
+            document.getElementById('form-servicio').addEventListener('submit', handleAdminSubmit);
+            
+            document.getElementById('btn-delete-entidad').addEventListener('click', () => handleAdminDelete('entidades'));
+            document.getElementById('btn-delete-servicio').addEventListener('click', () => handleAdminDelete('servicios'));
+        }
+
+        // --- LÓGICA DE NEGOCIO Y RENDERIZADO ---
+
+        function obtenerServiciosFiltrados() {
+            return estado.servicios.filter(s => {
+                if (estado.filtros.texto && !s.servicio.toLowerCase().includes(estado.filtros.texto)) return false;
+                if (estado.entidadSeleccionada && s.entidad_id !== estado.entidadSeleccionada.entidad_id) return false;
+                if (estado.filtros.entidad && s.entidad_id != estado.filtros.entidad) return false;
+                if (estado.filtros.sector && s.sector !== estado.filtros.sector) return false;
+                if (estado.filtros.catalogosSeleccionados.length > 0 && (!s.cod_catalogo || !estado.filtros.catalogosSeleccionados.includes(s.cod_catalogo))) return false;
+                return true;
+            });
+        }
+
+        function obtenerEntidadesFiltradas() {
+            const serviciosValidos = estado.servicios.filter(s => {
+                 if (estado.filtros.texto && !s.servicio.toLowerCase().includes(estado.filtros.texto)) return false;
+                 if (estado.filtros.sector && s.sector !== estado.filtros.sector) return false;
+                 if (estado.filtros.catalogosSeleccionados.length > 0 && (!s.cod_catalogo || !estado.filtros.catalogosSeleccionados.includes(s.cod_catalogo))) return false;
+                 return true;
+            });
+            const idsValidas = new Set(serviciosValidos.map(s => s.entidad_id));
+            const hayFiltrosSrv = estado.filtros.texto || estado.filtros.sector || estado.filtros.catalogosSeleccionados.length > 0;
+
+            return estado.entidades.filter(entidad => {
+                if (estado.filtros.entidad && entidad.entidad_id != estado.filtros.entidad) return false;
+                if (hayFiltrosSrv && !idsValidas.has(entidad.entidad_id)) return false;
+                return true;
+            });
+        }
+
+        function actualizarFiltrosYRenderizar() {
+            if(estado.filtros.entidad) {
+                const ent = estado.entidades.find(e => e.entidad_id == estado.filtros.entidad);
+                if(ent) estado.entidadSeleccionada = ent;
+            } else {
+                estado.entidadSeleccionada = null;
+            }
+            renderApp();
+        }
+
+        function renderApp() {
+            renderListaEntidades();
+            renderListaServicios();
+            renderMapa();
+        }
+
+        function renderListaEntidades() {
+            const container = document.getElementById('lista-entidades');
+            container.innerHTML = '';
+            const list = obtenerEntidadesFiltradas();
+            const { paginaActual, itemsPorPagina } = estado.paginacionEntidades;
+            const items = list.slice((paginaActual - 1) * itemsPorPagina, paginaActual * itemsPorPagina);
+
+            document.getElementById('contador-entidades').textContent = list.length;
+            const totalPags = Math.ceil(list.length / itemsPorPagina) || 1;
+            document.getElementById('info-paginacion-ent').textContent = `${paginaActual}/${totalPags}`;
+            document.getElementById('btn-prev-ent').disabled = paginaActual === 1;
+            document.getElementById('btn-next-ent').disabled = paginaActual >= totalPags;
+
+            items.forEach(ent => {
+                const div = document.createElement('div');
+                const selected = estado.entidadSeleccionada?.entidad_id === ent.entidad_id;
+                div.className = `p-3 border-b hover:bg-red-50 transition cursor-pointer flex items-center gap-3 ${selected ? 'bg-red-50 border-l-4 border-l-red-500' : ''}`;
+                div.innerHTML = `
+                    <div class="w-12 h-12 rounded-full bg-white border p-0.5 shadow-sm shrink-0 flex items-center justify-center overflow-hidden">
+                        <img src="${ent.logo_url}" class="max-w-full max-h-full object-contain" onerror="this.src='https://via.placeholder.com/50?text=Logo'">
+                    </div>
+                    <div class="overflow-hidden flex-1"><h3 class="font-semibold text-sm leading-tight truncate text-gray-800">${ent.denominacion}</h3></div>
+                `;
+                div.onclick = () => { estado.entidadSeleccionada = ent; estado.paginacionServicios.paginaActual=1; abrirModalEntidad(ent); renderApp(); map.flyTo([ent.latitud, ent.longitud], 15); };
+                container.appendChild(div);
+            });
+        }
+
+        function renderListaServicios() {
+            const container = document.getElementById('lista-servicios');
+            container.innerHTML = '';
+            const list = obtenerServiciosFiltrados();
+            const { paginaActual, itemsPorPagina } = estado.paginacionServicios;
+            const items = list.slice((paginaActual - 1) * itemsPorPagina, paginaActual * itemsPorPagina);
+
+            document.getElementById('titulo-lista-servicios').textContent = estado.entidadSeleccionada ? `Servicios de ${estado.entidadSeleccionada.denominacion}` : "Servicios";
+            document.getElementById('contador-servicios').textContent = list.length;
+            const totalPags = Math.ceil(list.length / itemsPorPagina) || 1;
+            document.getElementById('info-paginacion-srv').textContent = `${paginaActual}/${totalPags}`;
+            document.getElementById('btn-prev-srv').disabled = paginaActual === 1;
+            document.getElementById('btn-next-srv').disabled = paginaActual >= totalPags;
+
+            if(items.length === 0) container.innerHTML = `<div class="text-center py-8 text-gray-400 text-sm">No se encontraron servicios.</div>`;
+
+            items.forEach(serv => {
+                const conf = CONFIG_SECTORES[serv.sector] || { color: COLOR_DEFAULT, icon: "circle" };
+                const card = document.createElement('div');
+                card.className = "border border-gray-200 rounded-lg p-3 bg-white hover:shadow-md transition cursor-pointer border-l-4";
+                card.style.borderLeftColor = conf.color;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded text-white" style="background-color: ${conf.color}">
+                           <span class="material-symbols-outlined text-[12px]">${conf.icon}</span> ${serv.sector || 'GENERAL'}
+                        </span>
+                        ${serv.cod_catalogo ? `<span class="text-[9px] font-mono bg-blue-50 text-blue-700 px-1 py-0.5 rounded border border-blue-100">${serv.cod_catalogo}</span>` : ''}
+                    </div>
+                    <h4 class="font-bold text-sm text-gray-800 mb-2 leading-tight">${serv.servicio}</h4>
+                    <div class="flex items-center gap-2 text-xs text-gray-500 mb-2 pb-2">
+                         <div class="w-5 h-5 rounded-full bg-white border flex items-center justify-center overflow-hidden shrink-0">
+                            <img src="${serv.entidad_logo}" class="max-w-full max-h-full object-contain">
+                         </div>
+                        <span class="truncate">${serv.entidad_nombre}</span>
+                    </div>
+                `;
+                card.onclick = () => abrirModalServicio(serv);
+                container.appendChild(card);
+            });
+        }
+
+        function renderMapa() {
+            markersGroup.clearLayers();
+            obtenerEntidadesFiltradas().forEach(ent => {
+                if (!ent.latitud || !ent.longitud) return;
+                const iconHtml = `<div class="pin-marker"><span class="material-symbols-outlined icon-shadow" style="font-size: 48px; color: #7C3844;">location_on</span></div>`;
+                const marker = L.marker([ent.latitud, ent.longitud], { icon: L.divIcon({ html: iconHtml, className: '', iconSize: [48, 48], iconAnchor: [24, 46] }) });
+                marker.bindTooltip(`
+                    <div class="text-center p-3">
+                        <div class="w-16 h-16 mx-auto flex items-center justify-center bg-gray-50 rounded-full border mb-2"><img src="${ent.logo_url}" class="max-w-full max-h-full object-contain"></div>
+                        <h3 class="font-bold text-sm text-brand-red leading-tight">${ent.denominacion}</h3>
+                    </div>`, { direction: 'top', className: 'custom-tooltip-style', offset: [0, -10] });
+                marker.on('click', () => { estado.entidadSeleccionada = ent; estado.paginacionServicios.paginaActual = 1; abrirModalEntidad(ent); renderApp(); });
+                markersGroup.addLayer(marker);
+            });
+        }
+
+        // --- GESTIÓN DE MODALES PÚBLICOS ---
+        function abrirModalEntidad(ent) {
+            document.getElementById('modal-img').src = ent.logo_url;
+            document.getElementById('modal-title').textContent = ent.denominacion;
+            document.getElementById('modal-subtitle').textContent = "Entidad Social";
+            document.getElementById('modal-content').style.borderColor = "#7C3844";
+            document.getElementById('modal-body').innerHTML = generarHTMLDetalle(ent, false);
+            document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${ent.latitud},${ent.longitud}`, '_blank');
+            document.getElementById('modal-overlay').classList.remove('hidden');
+        }
+
+        function abrirModalServicio(serv) {
+            const conf = CONFIG_SECTORES[serv.sector] || { color: COLOR_DEFAULT };
+            document.getElementById('modal-img').src = serv.entidad_logo;
+            document.getElementById('modal-title').textContent = serv.servicio;
+            document.getElementById('modal-subtitle').innerHTML = `<span class="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded text-white" style="background-color: ${conf.color}">${serv.sector}</span>`;
+            document.getElementById('modal-content').style.borderColor = conf.color;
+            document.getElementById('modal-body').innerHTML = generarHTMLDetalle(serv, true);
+            document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${serv.latitud},${serv.longitud}`, '_blank');
+            document.getElementById('modal-overlay').classList.remove('hidden');
+        }
+
+        function generarHTMLDetalle(obj, esServicio) {
+            let html = '<div class="grid grid-cols-1 gap-4">';
+            if(obj.direccion) html += itemDetalle('location_on', 'red-500', 'Dirección', obj.direccion);
+            if(obj.telefono) html += itemDetalle('call', 'blue-500', 'Teléfono', obj.telefono);
+            if(obj.email) html += `<a href="mailto:${obj.email}" class="flex items-start gap-3 p-3 bg-gray-50 rounded hover:bg-gray-100 transition group"><span class="material-symbols-outlined text-yellow-500 mt-1">mail</span><div><span class="text-xs text-gray-400 uppercase font-bold block">Email</span><span class="text-sm text-gray-600 group-hover:text-blue-600 underline decoration-dotted">${obj.email}</span></div></a>`;
+            if(obj.web && !esServicio) html += `<a href="https://${obj.web}" target="_blank" class="flex items-start gap-3 p-3 bg-gray-50 rounded hover:bg-gray-100 transition group"><span class="material-symbols-outlined text-green-500 mt-1">public</span><div><span class="text-xs text-gray-400 uppercase font-bold block">Web</span><span class="text-sm text-gray-600 group-hover:text-blue-600 underline decoration-dotted">${obj.web}</span></div></a>`;
+            html += '</div>';
+
+            if(esServicio) {
+                if(obj.cod_catalogo) {
+                    html += `<div class="bg-blue-50 border border-blue-100 p-4 rounded-md mt-4"><div class="flex items-center gap-2 mb-1"><span class="font-mono font-bold text-xs text-blue-700 bg-blue-200 px-1.5 py-0.5 rounded border border-blue-300">${obj.cod_catalogo}</span></div><p class="text-sm text-blue-900 font-medium">${obj.catalogo_nombre}</p><a href="${obj.catalogo_url}" target="_blank" class="text-xs text-blue-600 hover:text-blue-800 font-semibold mt-2 inline-flex items-center gap-1">Ver ficha <span class="material-symbols-outlined text-[14px]">open_in_new</span></a></div>`;
+                } else {
+                    html += `<div class="bg-gray-100 p-4 rounded text-sm text-gray-500 mt-4 border border-gray-200"><p class="italic flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">info</span> No catalogado</p>${obj.subtipo ? `<p class="mt-1 font-medium pl-5">Subtipo: ${obj.subtipo}</p>` : ''}</div>`;
+                }
+                html += `<div class="mt-4"><span class="text-xs font-bold text-gray-400 uppercase block mb-2">Entidad titular</span><div class="flex items-center gap-3 p-3 bg-gray-50 border rounded-lg"><div class="w-8 h-8 bg-white rounded-full border flex items-center justify-center p-0.5 overflow-hidden"><img src="${obj.entidad_logo}" class="max-w-full max-h-full object-contain"></div><span class="text-sm font-bold text-gray-800">${obj.entidad_nombre}</span></div></div>`;
+            }
+            return html;
+        }
+
+        function itemDetalle(icon, color, label, val) {
+            return `<div class="flex items-start gap-3 p-3 bg-gray-50 rounded"><span class="material-symbols-outlined text-${color} mt-1">${icon}</span><div><span class="text-xs text-gray-400 uppercase font-bold block">${label}</span><span class="text-sm text-gray-800">${val}</span></div></div>`;
+        }
+
+        function cerrarModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+        function abrirModalCatalogo() {
+            const tbody = document.getElementById('tabla-catalogo-body');
+            tbody.innerHTML = '';
+            estado.catalogoCompleto.forEach(c => {
+                tbody.innerHTML += `<tr class="hover:bg-blue-50 transition"><td class="p-3 border-b font-mono font-bold text-blue-600 text-xs">${c.codigo}</td><td class="p-3 border-b text-gray-700 text-sm">${c.nombre}</td><td class="p-3 border-b text-center"><a href="${c.url_info}" target="_blank" class="text-gray-400 hover:text-brand-red"><span class="material-symbols-outlined">visibility</span></a></td></tr>`;
+            });
+            document.getElementById('modal-catalogo-overlay').classList.remove('hidden');
+        }
+        function cerrarModalCatalogo() { document.getElementById('modal-catalogo-overlay').classList.add('hidden'); }
+
+        // --- ADMINISTRACIÓN (CMS) ---
+
+        async function abrirAdmin() {
+
+            const ok = await requireAdminSession();
+            if (!ok) return;
+            // Rellenar selects
+            const selEnt = document.getElementById('admin-select-entidad');
+            selEnt.innerHTML = '<option value="">Seleccione Entidad Titular...</option>';
+            estado.entidades.forEach(e => selEnt.innerHTML += `<option value="${e.entidad_id}">${e.denominacion}</option>`);
+
+            const selCat = document.getElementById('admin-select-catalogo');
+            selCat.innerHTML = '<option value="">-- No catalogado / Ninguno --</option>';
+            estado.catalogoCompleto.forEach(c => selCat.innerHTML += `<option value="${c.codigo}">${c.codigo} - ${c.nombre}</option>`);
+
+            switchTab('tab-entidad');
+            document.getElementById('modal-admin-overlay').classList.remove('hidden');
+        }
+
+        function cerrarAdmin() { document.getElementById('modal-admin-overlay').classList.add('hidden'); }
+
+        function switchTab(tabId) {
+            estado.admin.activeTab = tabId;
+            const isEnt = tabId === 'tab-entidad';
+            
+            // UI Tabs
+            const btnEnt = document.getElementById('btn-tab-entidad');
+            const btnSrv = document.getElementById('btn-tab-servicio');
+            btnEnt.className = isEnt ? "flex-1 py-3 text-sm font-bold border-b-4 border-brand-red text-brand-red bg-white transition" : "flex-1 py-3 text-sm font-bold border-b-4 border-transparent text-gray-500 hover:text-gray-800 bg-gray-50 transition";
+            btnSrv.className = !isEnt ? "flex-1 py-3 text-sm font-bold border-b-4 border-brand-red text-brand-red bg-white transition" : "flex-1 py-3 text-sm font-bold border-b-4 border-transparent text-gray-500 hover:text-gray-800 bg-gray-50 transition";
+            
+            // UI Forms
+            document.getElementById('form-entidad').classList.toggle('hidden', !isEnt);
+            document.getElementById('form-servicio').classList.toggle('hidden', isEnt);
+
+            setAdminCreateMode(); // Reset form
+            renderAdminList();
+        }
+
+        function setAdminCreateMode() {
+            estado.admin.modo = 'create';
+            estado.admin.selectedId = null;
+            document.getElementById('form-mode-badge').textContent = "MODO CREACIÓN";
+            document.getElementById('form-mode-badge').className = "bg-brand-red text-white text-xs font-bold px-2 py-1 rounded";
+            document.getElementById('form-title').textContent = estado.admin.activeTab === 'tab-entidad' ? "Nueva Entidad" : "Nuevo Servicio";
+            
+            // Reset forms
+            document.getElementById('form-entidad').reset();
+            document.getElementById('form-servicio').reset();
+            document.getElementById('entidad-id').value = "";
+            document.getElementById('servicio-id').value = "";
+            
+            // Buttons
+            document.getElementById('btn-delete-entidad').classList.add('hidden');
+            document.getElementById('btn-delete-servicio').classList.add('hidden');
+        }
+
+        function setAdminEditMode(item) {
+            estado.admin.modo = 'edit';
+            document.getElementById('form-mode-badge').textContent = "MODO EDICIÓN";
+            document.getElementById('form-mode-badge').className = "bg-brand-red text-white text-xs font-bold px-2 py-1 rounded";
+            
+            if (estado.admin.activeTab === 'tab-entidad') {
+                estado.admin.selectedId = item.entidad_id;
+                document.getElementById('form-title').textContent = "Editar Entidad";
+                document.getElementById('entidad-id').value = item.entidad_id;
+                
+                // Fill fields
+                const form = document.getElementById('form-entidad');
+                form.querySelector('[name="denominacion"]').value = item.denominacion;
+                form.querySelector('[name="direccion"]').value = item.direccion;
+                form.querySelector('[name="telefono"]').value = item.telefono;
+                form.querySelector('[name="email"]').value = item.email || '';
+                form.querySelector('[name="web"]').value = item.web || '';
+                form.querySelector('[name="logo_url"]').value = item.logo_url;
+                form.querySelector('[name="latitud"]').value = item.latitud;
+                form.querySelector('[name="longitud"]').value = item.longitud;
+                
+                document.getElementById('btn-delete-entidad').classList.remove('hidden');
+
+            } else {
+                estado.admin.selectedId = item.servicio_id;
+                document.getElementById('form-title').textContent = "Editar Servicio";
+                document.getElementById('servicio-id').value = item.servicio_id;
+
+                const form = document.getElementById('form-servicio');
+                form.querySelector('[name="servicio"]').value = item.servicio;
+                form.querySelector('[name="sector"]').value = item.sector;
+                form.querySelector('[name="entidad_id"]').value = item.entidad_id; // Dropdown magic
+                form.querySelector('[name="cod_catalogo"]').value = item.cod_catalogo || '';
+                form.querySelector('[name="direccion"]').value = item.direccion || '';
+                form.querySelector('[name="email"]').value = item.email || '';
+                form.querySelector('[name="telefono"]').value = item.telefono || '';
+                form.querySelector('[name="latitud"]').value = item.latitud || '';
+                form.querySelector('[name="longitud"]').value = item.longitud || '';
+                form.querySelector('[name="subtipo"]').value = item.subtipo || '';
+
+                document.getElementById('btn-delete-servicio').classList.remove('hidden');
+            }
+        }
+
+        function renderAdminList() {
+            const container = document.getElementById('admin-list-container');
+            const search = document.getElementById('admin-search').value.toLowerCase();
+            container.innerHTML = '';
+
+            let items = [];
+            if (estado.admin.activeTab === 'tab-entidad') {
+                items = estado.entidades.filter(e => e.denominacion.toLowerCase().includes(search));
+            } else {
+                items = estado.servicios.filter(s => s.servicio.toLowerCase().includes(search));
+            }
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "bg-white p-2 rounded border hover:bg-gray-50 cursor-pointer flex justify-between items-center group";
+                const label = estado.admin.activeTab === 'tab-entidad' ? item.denominacion : item.servicio;
+                const subLabel = estado.admin.activeTab === 'tab-entidad' ? 'Entidad' : (item.entidad_nombre || 'Sin entidad');
+                
+                div.innerHTML = `
+                    <div>
+                        <div class="font-bold text-xs text-gray-800 leading-tight">${label}</div>
+                        <div class="text-[10px] text-gray-500">${subLabel}</div>
+                    </div>
+                    <span class="material-symbols-outlined text-gray-300 group-hover:text-blue-500 text-sm">edit</span>
+                `;
+                div.onclick = () => setAdminEditMode(item);
+                container.appendChild(div);
+            });
+        }
+
+        async function handleAdminSubmit(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const formData = new FormData(form);
+        const raw = Object.fromEntries(formData);
+
+        const isEntidad = estado.admin.activeTab === "tab-entidad";
+        const modo = estado.admin.modo; // create | edit
+
+        try {
+            if (isEntidad) {
+            const id = toNull(raw.id);
+
+            const payload = {
+                denominacion: toNull(raw.denominacion),
+                direccion: toNull(raw.direccion),
+                telefono: toNull(raw.telefono),
+                email: toNull(raw.email),
+                web: toNull(raw.web),
+                logo_url: toNull(raw.logo_url),
+                latitud: toFloatOrNull(raw.latitud),
+                longitud: toFloatOrNull(raw.longitud),
+            };
+
+            // Validación mínima (igual que tu backend)
+            if (!payload.denominacion || !payload.direccion || !payload.telefono || payload.latitud === null || payload.longitud === null || !payload.logo_url) {
+                alert("Faltan campos obligatorios en Entidad.");
+                return;
+            }
+
+            if (modo === "create") {
+                const { error } = await supabase.from("eapn_entidad").insert([payload]);
+                if (error) throw error;
+                alert("Entidad creada.");
+            } else {
+                const { error } = await supabase.from("eapn_entidad").update(payload).eq("entidad_id", id);
+                if (error) throw error;
+                alert("Entidad actualizada.");
+            }
+
+            } else {
+            // SERVICIOS (lo hago en el punto 7)
+            await upsertServicio(raw);
+            }
+
+            await cargarDatos();
+            if (modo === "create") form.reset();
+            renderAdminList();
+
+        } catch (err) {
+            console.error(err);
+            alert("Error: " + (err?.message ?? "operación fallida"));
+        }
+        }
+
+
+        async function handleAdminDelete(type) {
+        if (!confirm("¿Estás seguro de querer eliminar este registro?")) return;
+
+        try {
+            if (type === "entidades") {
+            const id = estado.admin.selectedId;
+
+            // Primero borrar relaciones (igual que tu server.js)
+            const { error: errRel } = await supabase
+                .from("eapn_servicio_entidad")
+                .delete()
+                .eq("entidad_id", id);
+            if (errRel) throw errRel;
+
+            const { error } = await supabase
+                .from("eapn_entidad")
+                .delete()
+                .eq("entidad_id", id);
+            if (error) throw error;
+
+            alert("Entidad eliminada.");
+            } else {
+            // servicios en el punto 7
+            await deleteServicio(estado.admin.selectedId);
+            }
+
+            setAdminCreateMode();
+            await cargarDatos();
+
+        } catch (err) {
+            console.error(err);
+            alert("Error al eliminar: " + (err?.message ?? "fallo"));
+        }
+        }
+
+
+        async function requireAdminSession() {
+            const { data } = await supabase.auth.getSession();
+            if (data.session) return true;
+
+            const email = prompt("Email de administración:");
+            if (!email) return false;
+
+            const { error } = await supabase.auth.signInWithOtp({ email });
+            if (error) {
+                alert("Error enviando enlace de acceso: " + error.message);
+                return false;
+            }
+            alert("Te he enviado un enlace de acceso al email. Ábrelo y vuelve a pulsar 'Gestión'.");
+            return false;
+            }
+
+            async function logoutAdmin() {
+            await supabase.auth.signOut();
+            alert("Sesión cerrada.");
+        }
+
+        function toNull(v) {
+            if (v === undefined || v === null) return null;
+            const s = String(v).trim();
+            return s === "" ? null : s;
+        }
+
+        function toFloatOrNull(v) {
+            const n = Number(String(v).replace(",", "."));
+            return Number.isFinite(n) ? n : null;
+        }
+
+        async function upsertServicio(raw) {
+            const modo = estado.admin.modo;
+            const servicio_id = toNull(raw.id);
+
+            const payload = {
+                servicio: toNull(raw.servicio),
+                sector: toNull(raw.sector),
+                cod_catalogo: toNull(raw.cod_catalogo),
+                direccion: toNull(raw.direccion),
+                email: toNull(raw.email),
+                web: toNull(raw.web),
+                telefono: toNull(raw.telefono),
+                latitud: toFloatOrNull(raw.latitud),
+                longitud: toFloatOrNull(raw.longitud),
+                subtipo: toNull(raw.subtipo),
+            };
+
+            const entidad_id = toNull(raw.entidad_id);
+
+            if (!payload.servicio || !payload.sector || !entidad_id) {
+                alert("Nombre, Sector y Entidad Titular son obligatorios.");
+                return;
+            }
+
+            if (modo === "create") {
+                const { data, error } = await supabase
+                .from("eapn_servicio")
+                .insert([payload])
+                .select("servicio_id")
+                .single();
+
+                if (error) throw error;
+
+                const newId = data.servicio_id;
+
+                const { error: errRel } = await supabase
+                .from("eapn_servicio_entidad")
+                .insert([{ servicio_id: newId, entidad_id }]);
+
+                if (errRel) throw errRel;
+
+                alert("Servicio creado.");
+            } else {
+                // 1) update servicio
+                const { error } = await supabase
+                .from("eapn_servicio")
+                .update(payload)
+                .eq("servicio_id", servicio_id);
+                if (error) throw error;
+
+                // 2) actualizar relación: borrar y crear (como haces ahora)
+                const { error: errDel } = await supabase
+                .from("eapn_servicio_entidad")
+                .delete()
+                .eq("servicio_id", servicio_id);
+                if (errDel) throw errDel;
+
+                const { error: errIns } = await supabase
+                .from("eapn_servicio_entidad")
+                .insert([{ servicio_id: servicio_id, entidad_id }]);
+                if (errIns) throw errIns;
+
+                alert("Servicio actualizado.");
+            }
+        }
+
+        async function deleteServicio(id) {
+        // 1) borrar relación
+        const { error: errRel } = await supabase
+            .from("eapn_servicio_entidad")
+            .delete()
+            .eq("servicio_id", id);
+        if (errRel) throw errRel;
+
+        // 2) borrar servicio
+        const { error } = await supabase
+            .from("eapn_servicio")
+            .delete()
+            .eq("servicio_id", id);
+        if (error) throw error;
+
+        alert("Servicio eliminado.");
+        }        
+
+    </script>
+</body>
+</html>
