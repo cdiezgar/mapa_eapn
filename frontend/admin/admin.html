@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración - EAPN CyL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,1,-50..200" />
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body class="bg-gray-100 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header Admin -->
+    <header class="bg-brand-red text-white p-4 shadow-lg flex justify-between items-center z-20 shrink-0">
+        <div class="flex items-center gap-4">
+            <a href="index.html" class="hover:bg-white/10 p-2 rounded-full transition" title="Volver al mapa">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </a>
+            <h1 class="font-bold text-xl flex items-center gap-2">
+                <span class="material-symbols-outlined">admin_panel_settings</span>
+                Panel de Control de Recursos
+            </h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <span id="user-email" class="text-xs bg-white/20 px-2 py-1 rounded">Invitado</span>
+            <button id="btn-logout" class="text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded transition border border-white/30">Cerrar Sesión</button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <nav class="w-72 bg-white border-r flex flex-col shrink-0 shadow-sm">
+            <div class="p-4 border-b space-y-2">
+                <button onclick="switchTab('tab-entidad')" id="btn-tab-entidad" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition bg-brand-red text-white">
+                    <span class="material-symbols-outlined">apartment</span> ENTIDADES
+                </button>
+                <button onclick="switchTab('tab-servicio')" id="btn-tab-servicio" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition text-gray-500 hover:bg-gray-100">
+                    <span class="material-symbols-outlined">list</span> SERVICIOS
+                </button>
+            </div>
+            
+            <div class="p-4 flex-1 flex flex-col overflow-hidden">
+                <div class="relative mb-4">
+                    <input type="text" id="admin-search" placeholder="Buscar..." class="w-full border rounded-lg p-2 pl-9 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-gray-50">
+                    <span class="material-symbols-outlined absolute left-2.5 top-2.5 text-gray-400 text-lg">search</span>
+                </div>
+                
+                <button id="btn-crear-nuevo" class="w-full mb-4 bg-gray-800 hover:bg-black text-white text-xs font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition">
+                    <span class="material-symbols-outlined text-sm">add_circle</span> CREAR NUEVO
+                </button>
+
+                <div id="admin-list-container" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <!-- Lista de items para editar -->
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Form Area -->
+        <main class="flex-1 bg-white overflow-y-auto p-8">
+            <div class="max-w-4xl mx-auto">
+                <div id="form-header" class="mb-8 pb-4 border-b flex justify-between items-end">
+                    <div>
+                        <h2 id="form-title" class="text-2xl font-bold text-gray-800">Nueva Entidad</h2>
+                        <p class="text-sm text-gray-500 mt-1">Completa los campos para dar de alta o modificar un registro.</p>
+                    </div>
+                    <span id="form-mode-badge" class="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-brand-red text-white">MODO CREACIÓN</span>
+                </div>
+
+                <!-- Formulario Entidad -->
+                <form id="form-entidad" class="space-y-6 animate-fade">
+                    <input type="hidden" name="id" id="entidad-id">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="col-span-2">
+                            <label class="filter-label">Nombre de la Entidad *</label>
+                            <input type="text" name="denominacion" required class="w-full border rounded-lg p-3 text-sm focus:border-red-500 outline-none bg-gray-50 transition">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="filter-label">Dirección Completa *</label>
+                            <input type="text" name="direccion" required class="w-full border rounded-lg p-3 text-sm bg-gray-50 outline-none">
+                        </div>
+                        <div>
+                            <label class="filter-label">Teléfono de contacto *</label>
+                            <input type="text" name="telefono" required class="w-full border rounded-lg p-3 text-sm bg-gray-50 outline-none">
+                        </div>
+                        <div>
+                            <label class="filter-label">Email Corporativo</label>
+                            <input type="email" name="email" class="w-full border rounded-lg p-3 text-sm bg-gray-50 outline-none">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="filter-label">Página Web (URL)</label>
+                            <input type="text" name="web" placeholder="www.ejemplo.org" class="w-full border rounded-lg p-3 text-sm bg-gray-50 outline-none">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="filter-label">URL del Logotipo (Imagen Pública) *</label>
+                            <input type="url" name="logo_url" required placeholder="https://..." class="w-full border rounded-lg p-3 text-sm bg-gray-50 outline-none">
+                        </div>
+                        <div>
+                            <label class="filter-label">Latitud *</label>
+                            <input type="number" step="any" name="latitud" required class="w-full border rounded-lg p-3 text-sm bg-gray-50 outline-none">
+                        </div>
+                        <div>
+                            <label class="filter-label">Longitud *</label>
+                            <input type="number" step="any" name="longitud" required class="w-full border rounded-lg p-3 text-sm bg-gray-50 outline-none">
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mt-10 pt-6 border-t">
+                        <button type="submit" class="flex-1 bg-brand-red hover:bg-red-800 text-white font-bold py-3 rounded-lg transition shadow-lg">GUARDAR ENTIDAD</button>
+                        <button type="button" id="btn-delete-entidad" class="hidden px-6 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-lg transition border border-red-200">ELIMINAR</button>
+                    </div>
+                </form>
+
+                <!-- Formulario Servicio -->
+                <form id="form-servicio" class="hidden space-y-6 animate-fade">
+                    <input type="hidden" name="id" id="servicio-id">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="col-span-2">
+                            <label class="filter-label">Nombre del Servicio *</label>
+                            <input type="text" name="servicio" required class="w-full border rounded-lg p-3 text-sm font-semibold bg-gray-50">
+                        </div>
+                        <div>
+                            <label class="filter-label">Sector Poblacional *</label>
+                            <select name="sector" required class="w-full border rounded-lg p-3 text-sm bg-gray-50"></select>
+                        </div>
+                        <div>
+                            <label class="filter-label">Entidad Responsable *</label>
+                            <select name="entidad_id" id="admin-select-entidad" required class="w-full border border-blue-200 bg-blue-50 rounded-lg p-3 text-sm"></select>
+                        </div>
+                        <div class="col-span-2 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                            <label class="filter-label text-yellow-800">Catálogo RESO</label>
+                            <select name="cod_catalogo" id="admin-select-catalogo" class="w-full border border-yellow-300 rounded-lg p-3 text-sm mt-1 bg-white"></select>
+                        </div>
+                        
+                        <div class="col-span-2 pt-4"><h3 class="text-xs font-black text-gray-400 uppercase tracking-widest border-b pb-2">Ubicación y Contacto Específico</h3></div>
+                        <div><label class="filter-label">Teléfono Específico</label><input type="text" name="telefono" class="w-full border rounded-lg p-3 text-sm bg-gray-50"></div>
+                        <div><label class="filter-label">Email Específico</label><input type="email" name="email" class="w-full border rounded-lg p-3 text-sm bg-gray-50"></div>
+                        <div class="col-span-2"><label class="filter-label">Dirección (si difiere de la entidad)</label><input type="text" name="direccion" class="w-full border rounded-lg p-3 text-sm bg-gray-50"></div>
+                        <div><label class="filter-label">Latitud</label><input type="number" step="any" name="latitud" class="w-full border rounded-lg p-3 text-sm bg-gray-50"></div>
+                        <div><label class="filter-label">Longitud</label><input type="number" step="any" name="longitud" class="w-full border rounded-lg p-3 text-sm bg-gray-50"></div>
+                        <div class="col-span-2"><label class="filter-label">Observaciones / Subtipo</label><input type="text" name="subtipo" class="w-full border rounded-lg p-3 text-sm bg-gray-50"></div>
+                    </div>
+                    <div class="flex gap-4 mt-10 pt-6 border-t">
+                        <button type="submit" class="flex-1 bg-brand-red hover:bg-red-800 text-white font-bold py-3 rounded-lg transition shadow-lg">GUARDAR SERVICIO</button>
+                        <button type="button" id="btn-delete-servicio" class="hidden px-6 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-lg transition border border-red-200">ELIMINAR</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="admin.js"></script>
+</body>
+</html>
