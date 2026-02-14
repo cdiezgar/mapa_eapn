@@ -411,6 +411,30 @@
             </div>
         </div>
 
+        <div id="loginModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999;">
+            <div style="max-width:360px; margin:10vh auto; background:#fff; padding:16px; border-radius:8px;">
+                <h3 style="margin:0 0 12px;">Acceso administración</h3>
+
+                <label style="display:block; margin-bottom:8px;">
+                Email
+                <input id="loginEmail" type="email" style="width:100%; padding:8px; margin-top:4px;">
+                </label>
+
+                <label style="display:block; margin-bottom:12px;">
+                Contraseña
+                <input id="loginPassword" type="password" style="width:100%; padding:8px; margin-top:4px;">
+                </label>
+
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button id="loginCancel">Cancelar</button>
+                <button id="loginSubmit">Entrar</button>
+                </div>
+
+                <div id="loginError" style="color:#b00020; margin-top:10px; display:none;"></div>
+            </div>
+        </div>
+
+
 
 
     </div>
@@ -1011,17 +1035,52 @@
         }
         }
 
+        function openLoginModal() {
+            return new Promise((resolve) => {
+                const modal = document.getElementById("loginModal");
+                const emailEl = document.getElementById("loginEmail");
+                const passEl  = document.getElementById("loginPassword");
+                const errEl   = document.getElementById("loginError");
+                const cancel  = document.getElementById("loginCancel");
+                const submit  = document.getElementById("loginSubmit");
+
+                errEl.style.display = "none";
+                errEl.textContent = "";
+                modal.style.display = "block";
+                emailEl.focus();
+
+                const cleanup = () => {
+                modal.style.display = "none";
+                cancel.onclick = null;
+                submit.onclick = null;
+                };
+
+                cancel.onclick = () => { cleanup(); resolve(null); };
+
+                submit.onclick = async () => {
+                const email = emailEl.value.trim();
+                const password = passEl.value;
+
+                if (!email || !password) {
+                    errEl.textContent = "Email y contraseña son obligatorios.";
+                    errEl.style.display = "block";
+                    return;
+                }
+
+                cleanup();
+                resolve({ email, password });
+                };
+            });
+        }
+
         async function requireAdminSession() {
             const { data } = await supabase.auth.getSession();
             if (data.session) return true;
 
-            const email = prompt("Email de administración:");
-            if (!email) return false;
+            const creds = await openLoginModal();
+            if (!creds) return false;
 
-            const password = prompt("Contraseña:");
-            if (!password) return false;
-
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            const { error } = await supabase.auth.signInWithPassword(creds);
 
             if (error) {
                 alert("Login fallido: " + error.message);
@@ -1030,6 +1089,7 @@
 
             return true;
         }
+
 
         async function logoutAdmin() {
                 await supabase.auth.signOut();
