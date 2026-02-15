@@ -32,13 +32,13 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 .leaflet-tooltip.custom-tooltip-style {
     background-color: white;
     border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    padding: 0;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    padding: 8px;
     font-family: 'Segoe UI', sans-serif;
     white-space: normal;
     width: auto;
-    min-width: 150px;
+    min-width: 240px; /* Tooltip algo más grande */
 }
 .leaflet-tooltip-top:before { border-top-color: white; }
 
@@ -60,12 +60,9 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .animate-fade { animation: fadeIn 0.3s ease-out; }
 
-/* Tarjetas de servicios */
-#lista-servicios > div {
-    animation: fadeIn 0.4s ease-out backwards;
+/* Tarjetas de servicios y entidades */
+#lista-servicios > div, #lista-entidades > div {
+    animation: fadeIn 0.3s ease-out backwards;
 }
 
-#lista-servicios > div:nth-child(1) { animation-delay: 0.05s; }
-#lista-servicios > div:nth-child(2) { animation-delay: 0.1s; }
-#lista-servicios > div:nth-child(3) { animation-delay: 0.15s; }
-#lista-servicios > div:nth-child(4) { animation-delay: 0.2s; }
+#lista-servicios > div:nth-child(n+1) { animation-delay: calc(0.03s * n); }

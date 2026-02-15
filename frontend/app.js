@@ -37,8 +37,9 @@ if (document.getElementById('map')) {
             catalogoCompleto: [],
             entidadSeleccionada: null,
             filtros: { texto: "", entidad: "", sector: "", catalogosSeleccionados: [] },
-            paginacionEntidades: { paginaActual: 1, itemsPorPagina: 8 },
-            paginacionServicios: { paginaActual: 1, itemsPorPagina: 4 }
+            // Ajuste 4: 10 registros por página
+            paginacionEntidades: { paginaActual: 1, itemsPorPagina: 10 },
+            paginacionServicios: { paginaActual: 1, itemsPorPagina: 10 }
         };
 
         let map;
@@ -137,14 +138,14 @@ if (document.getElementById('map')) {
                     icon: L.divIcon({ html: '<div class="pin-marker"><span class="material-symbols-outlined icon-shadow" style="font-size: 48px; color: #7C3844;">location_on</span></div>', className: '', iconSize: [48, 48], iconAnchor: [24, 46] }) 
                 });
                 
-                // MEJORA 1: Tooltip con Logotipo y Nombre
+                // Ajuste 1: Tooltip y Logo más grandes
                 marker.bindTooltip(`
-                    <div class="flex items-center gap-2 p-1">
-                        <img src="${ent.logo_url}" class="w-8 h-8 object-contain rounded border bg-white">
-                        <div class="font-bold text-xs text-brand-red leading-tight">${ent.denominacion}</div>
-                    </div>`, { direction: 'top', className: 'custom-tooltip-style' });
+                    <div class="flex items-center gap-3 p-2">
+                        <img src="${ent.logo_url}" class="w-14 h-14 object-contain rounded-lg border-2 border-brand-red bg-white shadow-sm">
+                        <div class="font-bold text-sm text-brand-red leading-tight max-w-[150px]">${ent.denominacion}</div>
+                    </div>`, { direction: 'top', className: 'custom-tooltip-style', offset: [0, -20] });
                 
-                marker.on('click', () => { estado.entidadSeleccionada = ent; render(); });
+                marker.on('click', () => { estado.entidadSeleccionada = ent; render(); window.openModalEntidad(ent); });
                 markersGroup.addLayer(marker);
             });
         };
@@ -166,7 +167,6 @@ if (document.getElementById('map')) {
                 estado.entidadSeleccionada = ent; 
                 map.flyTo([ent.latitud, ent.longitud], 15); 
                 render(); 
-                // MEJORA 2: Abrir modal al pulsar en el listado
                 window.openModalEntidad(ent);
             };
             return div;
@@ -175,7 +175,6 @@ if (document.getElementById('map')) {
         const renderServicioCard = (serv) => {
             const conf = CONFIG_SECTORES[serv.sector] || { color: "#666", icon: "circle" };
             const div = document.createElement('div');
-            // MEJORA 3: Etiquetas con fondo, icono y código catálogo
             div.className = "border rounded-xl p-4 bg-white hover:shadow-lg cursor-pointer border-l-[6px] transition-all relative overflow-hidden group";
             div.style.borderLeftColor = conf.color;
             div.innerHTML = `
@@ -231,55 +230,62 @@ if (document.getElementById('map')) {
             if (bpEnt) bpEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual > 1) { estado.paginacionEntidades.paginaActual--; render(); }};
             
             const bnEnt = document.getElementById('btn-next-ent');
-            if (bnEnt) bnEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual < Math.ceil(estado.entidades.length / 8)) { estado.paginacionEntidades.paginaActual++; render(); }};
+            if (bnEnt) bnEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual < Math.ceil(estado.entidades.length / estado.paginacionEntidades.itemsPorPagina)) { estado.paginacionEntidades.paginaActual++; render(); }};
 
             const bpSrv = document.getElementById('btn-prev-srv');
             if (bpSrv) bpSrv.onclick = () => { if (estado.paginacionServicios.paginaActual > 1) { estado.paginacionServicios.paginaActual--; render(); }};
             
             const bnSrv = document.getElementById('btn-next-srv');
-            if (bnSrv) bnSrv.onclick = () => { if (estado.paginacionServicios.paginaActual < Math.ceil(estado.servicios.length / 4)) { estado.paginacionServicios.paginaActual++; render(); }};
-            
-            const btnVerCat = document.getElementById('btn-ver-catalogo-completo');
-            if (btnVerCat) btnVerCat.onclick = () => {
-                const tbody = document.getElementById('tabla-catalogo-body');
-                tbody.innerHTML = '';
-                estado.catalogoCompleto.forEach(c => {
-                    tbody.innerHTML += `<tr class="hover:bg-blue-50 transition"><td class="p-3 border-b font-mono font-bold text-blue-600 text-xs">${c.codigo}</td><td class="p-3 border-b text-gray-700 text-sm">${c.nombre}</td><td class="p-3 border-b text-center"><a href="${c.url_info}" target="_blank" class="text-gray-400 hover:text-brand-red"><span class="material-symbols-outlined">visibility</span></a></td></tr>`;
-                });
-                document.getElementById('modal-catalogo-overlay').classList.remove('hidden');
-            };
+            if (bnSrv) bnSrv.onclick = () => { if (estado.paginacionServicios.paginaActual < Math.ceil(estado.servicios.length / estado.paginacionServicios.itemsPorPagina)) { estado.paginacionServicios.paginaActual++; render(); }};
         };
 
         window.cerrarModal = () => document.getElementById('modal-overlay').classList.add('hidden');
-        window.cerrarModalCatalogo = () => document.getElementById('modal-catalogo-overlay').classList.add('hidden');
         
-        // Modal genérico para Entidad
         window.openModalEntidad = (e) => {
             document.getElementById('modal-img').src = e.logo_url;
             document.getElementById('modal-title').textContent = e.denominacion;
-            document.getElementById('modal-subtitle').innerHTML = `<span class="px-2 py-0.5 rounded bg-gray-200 text-gray-600 text-[9px]">ENTIDAD SOCIAL</span>`;
+            document.getElementById('modal-subtitle').innerHTML = `<span class="px-2 py-0.5 rounded bg-gray-200 text-gray-600 text-[9px] font-bold">ENTIDAD SOCIAL</span>`;
             
-            // MEJORA 4: Datos de contacto completos
+            // Cuerpo del modal
             document.getElementById('modal-body').innerHTML = `
                 <div class="space-y-3">
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
                         <span class="material-symbols-outlined text-brand-red mt-0.5">location_on</span>
                         <div><div class="text-[10px] text-gray-400 uppercase font-bold">Dirección</div><div class="text-sm font-medium">${e.direccion || 'No especificada'}</div></div>
                     </div>
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span class="material-symbols-outlined text-blue-500 mt-0.5">call</span>
-                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Teléfono</div><div class="text-sm font-medium">${e.telefono || 'No disponible'}</div></div>
-                    </div>
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span class="material-symbols-outlined text-yellow-600 mt-0.5">mail</span>
-                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Email</div><div class="text-sm font-medium">${e.email || 'No disponible'}</div></div>
-                    </div>
+                    ${e.telefono ? `<div class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl"><span class="material-symbols-outlined text-blue-500 mt-0.5">call</span><div><div class="text-[10px] text-gray-400 uppercase font-bold">Teléfono</div><div class="text-sm font-medium">${e.telefono}</div></div></div>` : ''}
+                    ${e.email ? `<div class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl"><span class="material-symbols-outlined text-yellow-600 mt-0.5">mail</span><div><div class="text-[10px] text-gray-400 uppercase font-bold">Email</div><div class="text-sm font-medium">${e.email}</div></div></div>` : ''}
                 </div>`;
-            document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${e.latitud},${e.longitud}`);
+            
+            // Ajuste 3: Botones dinámicos en el footer
+            const footer = document.querySelector('#modal-content .p-4.bg-gray-50');
+            footer.innerHTML = '';
+            
+            if (e.web_url || e.web) {
+                const btnWeb = document.createElement('button');
+                btnWeb.className = "mr-auto flex items-center gap-2 px-4 py-2 text-brand-red border border-brand-red rounded-lg text-xs font-bold hover:bg-red-50 transition";
+                btnWeb.innerHTML = `<span class="material-symbols-outlined text-[18px]">language</span> Sitio Web`;
+                btnWeb.onclick = () => window.open(e.web_url || e.web, '_blank');
+                footer.appendChild(btnWeb);
+            }
+
+            if (e.email) {
+                const btnMail = document.createElement('button');
+                btnMail.className = "flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-200 transition mr-2";
+                btnMail.innerHTML = `<span class="material-symbols-outlined text-[18px]">alternate_email</span> Contactar`;
+                btnMail.onclick = () => window.location.href = `mailto:${e.email}`;
+                footer.appendChild(btnMail);
+            }
+
+            const btnLlegar = document.createElement('button');
+            btnLlegar.className = "flex items-center gap-2 px-5 py-2 bg-brand-red text-white rounded-lg text-xs font-bold hover:bg-red-800 transition shadow-sm";
+            btnLlegar.innerHTML = `<span class="material-symbols-outlined text-[18px]">near_me</span> Cómo llegar`;
+            btnLlegar.onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${e.latitud},${e.longitud}`);
+            footer.appendChild(btnLlegar);
+
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
 
-        // MEJORA 4: Modal de Servicio con más detalles
         window.openModalServicio = (s) => {
             const conf = CONFIG_SECTORES[s.sector] || { color: "#666", icon: 'help' };
             document.getElementById('modal-img').src = s.entidad_logo;
@@ -290,40 +296,22 @@ if (document.getElementById('map')) {
                     ${s.sector}
                 </div>`;
             
+            // Ajuste 2: Datos de contacto solo si existen
+            let contactHtml = '';
+            if (s.direccion) contactHtml += `<div class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl"><span class="material-symbols-outlined text-brand-red mt-0.5">location_on</span><div><div class="text-[10px] text-gray-400 uppercase font-bold">Dirección</div><div class="text-sm font-medium">${s.direccion}</div></div></div>`;
+            if (s.telefono) contactHtml += `<div class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl"><span class="material-symbols-outlined text-blue-500 mt-0.5">call</span><div><div class="text-[10px] text-gray-400 uppercase font-bold">Teléfono</div><div class="text-sm font-medium">${s.telefono}</div></div></div>`;
+            if (s.email) contactHtml += `<div class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl"><span class="material-symbols-outlined text-yellow-600 mt-0.5">mail</span><div><div class="text-[10px] text-gray-400 uppercase font-bold">Email</div><div class="text-sm font-medium">${s.email}</div></div></div>`;
+
             document.getElementById('modal-body').innerHTML = `
                 <div class="space-y-3">
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span class="material-symbols-outlined text-brand-red mt-0.5">location_on</span>
-                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Dirección</div><div class="text-sm font-medium">${s.direccion || 'No especificada'}</div></div>
-                    </div>
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span class="material-symbols-outlined text-blue-500 mt-0.5">call</span>
-                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Teléfono</div><div class="text-sm font-medium">${s.telefono || 'Ver en entidad'}</div></div>
-                    </div>
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span class="material-symbols-outlined text-yellow-600 mt-0.5">mail</span>
-                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Email</div><div class="text-sm font-medium">${s.email || 'Ver en entidad'}</div></div>
-                    </div>
-                    
-                    ${s.cod_catalogo ? `
-                    <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                        <div class="flex items-center gap-2 mb-2">
-                             <div class="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded">${s.cod_catalogo}</div>
-                             <div class="text-xs font-bold text-blue-800">Catálogo RESO</div>
-                        </div>
-                        <div class="text-sm text-blue-700 leading-snug">${s.catalogo_nombre}</div>
-                        <a href="#" class="inline-block mt-2 text-xs font-bold text-blue-600 hover:underline">Ver ficha técnica →</a>
-                    </div>` : ''}
-
-                    <div class="mt-4 pt-4 border-t">
-                        <div class="text-[9px] text-gray-400 font-bold uppercase mb-2">Entidad Titular</div>
-                        <div class="flex items-center gap-3 p-3 border rounded-xl bg-white shadow-sm">
-                            <img src="${s.entidad_logo}" class="w-8 h-8 object-contain">
-                            <span class="text-sm font-bold text-gray-700">${s.entidad_nombre}</span>
-                        </div>
-                    </div>
+                    ${contactHtml}
+                    ${s.cod_catalogo ? `<div class="p-4 bg-blue-50 border border-blue-100 rounded-xl"><div class="flex items-center gap-2 mb-2"><div class="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded">${s.cod_catalogo}</div><div class="text-xs font-bold text-blue-800">Catálogo RESO</div></div><div class="text-sm text-blue-700 leading-snug">${s.catalogo_nombre}</div></div>` : ''}
+                    <div class="mt-4 pt-4 border-t"><div class="text-[9px] text-gray-400 font-bold uppercase mb-2">Entidad Titular</div><div class="flex items-center gap-3 p-3 border rounded-xl bg-white shadow-sm"><img src="${s.entidad_logo}" class="w-8 h-8 object-contain"><span class="text-sm font-bold text-gray-700">${s.entidad_nombre}</span></div></div>
                 </div>`;
-            document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${s.latitud},${s.longitud}`);
+
+            const footer = document.querySelector('#modal-content .p-4.bg-gray-50');
+            footer.innerHTML = `<button class="flex items-center gap-2 px-5 py-2.5 text-white rounded shadow text-sm bg-brand-red ml-auto" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${s.latitud},${s.longitud}')"><span class="material-symbols-outlined">near_me</span> Cómo llegar</button>`;
+            
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
 
