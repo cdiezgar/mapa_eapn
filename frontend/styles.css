@@ -1,4 +1,8 @@
-body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    overflow: hidden;
+}
+
 #map { height: 100%; width: 100%; z-index: 0; }
 
 .bg-brand-red { background-color: #7C3844; }
@@ -8,6 +12,7 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 .bg-brand-black { background-color: #1D1D1B; }
 .text-brand-black { color: #1D1D1B; }
 
+/* Marcadores y Clusters */
 .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
     background-color: rgba(124, 56, 68, 0.6) !important;
 }
@@ -29,40 +34,99 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 }
 .icon-shadow { filter: drop-shadow(0px 3px 2px rgba(0,0,0,0.4)); }
 
+/* Tooltips */
 .leaflet-tooltip.custom-tooltip-style {
     background-color: white;
-    border: 1px solid #ddd;
+    border: none;
     border-radius: 12px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    padding: 8px;
+    padding: 10px;
     font-family: 'Segoe UI', sans-serif;
     white-space: normal;
-    width: auto;
-    min-width: 240px; /* Tooltip algo más grande */
+    min-width: 260px;
 }
 .leaflet-tooltip-top:before { border-top-color: white; }
 
+/* Scrollbars */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #999; }
+::-webkit-scrollbar-track { background: #f8fafc; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
 .filter-label { 
-    font-size: 0.7rem; 
+    font-size: 0.65rem; 
     text-transform: uppercase; 
-    color: #666; 
-    font-weight: 700; 
+    color: #64748b; 
+    font-weight: 800; 
     margin-bottom: 2px; 
     display: block; 
 }
 
-/* Animaciones */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.animate-fade { animation: fadeIn 0.3s ease-out; }
-
-/* Tarjetas de servicios y entidades */
-#lista-servicios > div, #lista-entidades > div {
-    animation: fadeIn 0.3s ease-out backwards;
+/* Modal Estilizado y Centrado */
+#modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
 }
 
-#lista-servicios > div:nth-child(n+1) { animation-delay: calc(0.03s * n); }
+.modal-container {
+    background: white;
+    width: 100%;
+    max-width: 550px;
+    max-height: 90vh;
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Ajustes de Listado para asegurar Scroll */
+.list-container {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0; /* Crítico para que el scroll funcione en flex */
+}
+
+/* Animaciones de tarjetas */
+.card-item {
+    animation: fadeInCard 0.3s ease-out backwards;
+}
+
+@keyframes fadeInCard {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Estilos de botones de contacto en modal */
+.btn-contact-outline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.btn-web { border-color: #1e293b; color: #1e293b; background: white; }
+.btn-web:hover { background: #f1f5f9; }
+
+.btn-mail { background: #f1f5f9; color: #475569; }
+.btn-mail:hover { background: #e2e8f0; }
+
+.btn-maps { background: #7C3844; color: white; }
+.btn-maps:hover { background: #632d36; }
