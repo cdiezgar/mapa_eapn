@@ -209,36 +209,78 @@ function setEditMode(item) {
 async function handleSave(e) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
-    if (data.latitud === "") data.latitud = null;
-    if (data.longitud === "") data.longitud = null;
+    
+    // CORRECCIÓN: Solo borrar el ID correspondiente a la tabla que estamos insertando
+    if (adminState.modo === 'create') {
+        if (adminState.activeTab === 'tab-entidad') {
+            delete data.entidad_id; 
+        } else {
+            delete data.servicio_id;
+            // IMPORTANTE: NO borrar entidad_id aquí, se necesita para la relación
+        }
+    }
+    
+    // Formatear coordenadas
+    if (data.latitud === "" || data.latitud === undefined) data.latitud = null;
+    else data.latitud = parseFloat(data.latitud);
+    
+    if (data.longitud === "" || data.longitud === undefined) data.longitud = null;
+    else data.longitud = parseFloat(data.longitud);
 
     try {
         if (adminState.activeTab === 'tab-entidad') {
-            if (adminState.modo === 'create') await supabase.from('eapn_entidad').insert([data]);
-            else await supabase.from('eapn_entidad').update(data).eq('entidad_id', adminState.selectedId);
+            let res;
+            if (adminState.modo === 'create') {
+                res = await supabase.from('eapn_entidad').insert([data]);
+            } else {
+                res = await supabase.from('eapn_entidad').update(data).eq('entidad_id', adminState.selectedId);
+            }
+            if (res.error) throw res.error;
+
         } else {
-            const entidad_id = data.entidad_id;
+            const entidad_id_referencia = data.entidad_id; // Guardamos la referencia
             const srvData = { ...data };
-            delete srvData.entidad_id;
+            delete srvData.entidad_id; // Quitamos de los datos de la tabla eapn_servicio
             
             const isReso = document.getElementById('toggle-reso').checked;
             if (isReso) srvData.subtipo = null;
             else srvData.cod_catalogo = null;
 
             if (adminState.modo === 'create') {
-                const { data: newSrv } = await supabase.from('eapn_servicio').insert([srvData]).select().single();
-                await supabase.from('eapn_servicio_entidad').insert([{ servicio_id: newSrv.servicio_id, entidad_id }]);
+                const { data: newSrv, error: sErr } = await supabase.from('eapn_servicio').insert([srvData]).select().single();
+                if (sErr) throw sErr;
+                
+                const { error: rErr } = await supabase.from('eapn_servicio_entidad').insert([{ 
+                    servicio_id: newSrv.servicio_id, 
+                    entidad_id: entidad_id_referencia 
+                }]);
+                if (rErr) throw rErr;
             } else {
-                await supabase.from('eapn_servicio').update(srvData).eq('servicio_id', adminState.selectedId);
+                const { error: sErr } = await supabase.from('eapn_servicio').update(srvData).eq('servicio_id', adminState.selectedId);
+                if (sErr) throw sErr;
+                
                 await supabase.from('eapn_servicio_entidad').delete().eq('servicio_id', adminState.selectedId);
-                await supabase.from('eapn_servicio_entidad').insert([{ servicio_id: adminState.selectedId, entidad_id }]);
+                const { error: rErr } = await supabase.from('eapn_servicio_entidad').insert([{ 
+                    servicio_id: adminState.selectedId, 
+                    entidad_id: entidad_id_referencia 
+                }]);
+                if (rErr) throw rErr;
             }
         }
+
         alert("¡Guardado correctamente!");
         await loadData();
         resetForm();
         renderList();
-    } catch (err) { alert("Error al guardar: " + err.message); }
+
+    } catch (err) {
+        console.error("Error completo de Supabase:", err);
+        if (err.code === "23505") {
+            alert("Error de base de datos: La secuencia de IDs está desincronizada.");
+        } else {
+            alert(`Error al guardar: ${err.message || 'Error desconocido'}`);
+        }
+    }
 }
 
 async function handleDelete(type) {
@@ -246,16 +288,20 @@ async function handleDelete(type) {
     try {
         if (type === 'entidad') {
             await supabase.from('eapn_servicio_entidad').delete().eq('entidad_id', adminState.selectedId);
-            await supabase.from('eapn_entidad').delete().eq('entidad_id', adminState.selectedId);
+            const { error } = await supabase.from('eapn_entidad').delete().eq('entidad_id', adminState.selectedId);
+            if (error) throw error;
         } else {
             await supabase.from('eapn_servicio_entidad').delete().eq('servicio_id', adminState.selectedId);
-            await supabase.from('eapn_servicio').delete().eq('servicio_id', adminState.selectedId);
+            const { error } = await supabase.from('eapn_servicio').delete().eq('servicio_id', adminState.selectedId);
+            if (error) throw error;
         }
         alert("Eliminado.");
         await loadData();
         resetForm();
         renderList();
-    } catch (err) { alert("Error al eliminar."); }
+    } catch (err) { 
+        alert("Error al eliminar: " + err.message); 
+    }
 }
 
 function initMapFunctions() {
@@ -265,14 +311,12 @@ function initMapFunctions() {
         mapPicker.targetForm = type;
         document.getElementById('map-picker-container').classList.remove('hidden');
 
-        // Referencia al campo de dirección del formulario activo
         const form = document.getElementById(`form-${type}`);
-        const addressValue = form.querySelector('[name="direccion"]').value;
+        const addressValue = form.querySelector('[name=\"direccion\"]').value;
 
         const currentLatInput = document.getElementById(`${type}-lat`).value;
         const currentLngInput = document.getElementById(`${type}-lng`).value;
 
-        // Función para inicializar o actualizar el mapa en una posición
         const setupMapAt = (lat, lng) => {
             if (!mapPicker.map) {
                 mapPicker.map = new google.maps.Map(document.getElementById('map-canvas'), { center: { lat, lng }, zoom: 15 });
@@ -290,26 +334,18 @@ function initMapFunctions() {
             updatePicker({ lat: () => lat, lng: () => lng });
         };
 
-        // Lógica de prioridad:
-        // 1. Si hay coordenadas ya puestas, usamos esas.
-        // 2. Si no hay coordenadas pero hay dirección escrita, geocodificamos.
-        // 3. Si no hay nada, usamos Valladolid por defecto.
-
         if (currentLatInput && currentLngInput) {
             setupMapAt(parseFloat(currentLatInput), parseFloat(currentLngInput));
         } else if (addressValue && addressValue.trim() !== "") {
-            // Intentar buscar por la dirección del formulario
             mapPicker.geocoder.geocode({ address: addressValue + ", Castilla y León, España" }, (results, status) => {
                 if (status === "OK") {
                     const loc = results[0].geometry.location;
                     setupMapAt(loc.lat(), loc.lng());
                 } else {
-                    // Si falla la búsqueda, fallback a Valladolid
                     setupMapAt(41.6523, -4.7245);
                 }
             });
         } else {
-            // Fallback total
             setupMapAt(41.6523, -4.7245);
         }
     };
