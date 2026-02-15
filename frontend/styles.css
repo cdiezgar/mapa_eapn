@@ -29,23 +29,25 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 }
 .icon-shadow { filter: drop-shadow(0px 3px 2px rgba(0,0,0,0.4)); }
 
+/* Tooltip mejorado: más ancho y texto más legible */
 .leaflet-tooltip.custom-tooltip-style {
     background-color: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    padding: 0;
+    border: 2px solid #7C3844;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    padding: 4px;
     font-family: 'Segoe UI', sans-serif;
     white-space: normal;
     width: auto;
-    min-width: 150px;
+    min-width: 220px;
 }
-.leaflet-tooltip-top:before { border-top-color: white; }
+.leaflet-tooltip-top:before { border-top-color: #7C3844; }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #999; }
+/* Scrollbar personalizado */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #f8fafc; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 2px solid #f8fafc; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
 .filter-label { 
     font-size: 0.7rem; 
@@ -56,16 +58,18 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     display: block; 
 }
 
+/* Scroll de listados */
+#lista-entidades, #lista-servicios {
+    scrollbar-gutter: stable;
+    height: 100%;
+    scroll-behavior: smooth;
+}
+
 /* Animaciones */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .animate-fade { animation: fadeIn 0.3s ease-out; }
 
-/* Tarjetas de servicios */
+/* Tarjetas de servicios con hover suave */
 #lista-servicios > div {
     animation: fadeIn 0.4s ease-out backwards;
 }
-
-#lista-servicios > div:nth-child(1) { animation-delay: 0.05s; }
-#lista-servicios > div:nth-child(2) { animation-delay: 0.1s; }
-#lista-servicios > div:nth-child(3) { animation-delay: 0.15s; }
-#lista-servicios > div:nth-child(4) { animation-delay: 0.2s; }
