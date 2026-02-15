@@ -139,12 +139,16 @@ if (document.getElementById('map')) {
                 
                 // MEJORA 1: Tooltip con Logotipo y Nombre
                 marker.bindTooltip(`
-                    <div class="flex items-center gap-2 p-1">
-                        <img src="${ent.logo_url}" class="w-8 h-8 object-contain rounded border bg-white">
-                        <div class="font-bold text-xs text-brand-red leading-tight">${ent.denominacion}</div>
-                    </div>`, { direction: 'top', className: 'custom-tooltip-style' });
+                    <div class="flex items-center gap-3 p-2 min-w-[220px]">
+                        <img src="${ent.logo_url}" 
+                            class="w-14 h-14 object-contain rounded border bg-white p-1">
+                        <div class="font-bold text-sm text-brand-red leading-tight">
+                            ${ent.denominacion}
+                        </div>
+                    </div>
+                `, { direction: 'top', className: 'custom-tooltip-style' });
                 
-                marker.on('click', () => { estado.entidadSeleccionada = ent; render(); });
+                marker.on('click', () => { estado.entidadSeleccionada = ent; render(); window.openModalEntidad(ent);});
                 markersGroup.addLayer(marker);
             });
         };
@@ -255,6 +259,9 @@ if (document.getElementById('map')) {
         
         // Modal genérico para Entidad
         window.openModalEntidad = (e) => {
+
+            let web = e.web;
+
             document.getElementById('modal-img').src = e.logo_url;
             document.getElementById('modal-title').textContent = e.denominacion;
             document.getElementById('modal-subtitle').innerHTML = `<span class="px-2 py-0.5 rounded bg-gray-200 text-gray-600 text-[9px]">ENTIDAD SOCIAL</span>`;
@@ -275,6 +282,16 @@ if (document.getElementById('map')) {
                         <div><div class="text-[10px] text-gray-400 uppercase font-bold">Email</div><div class="text-sm font-medium">${e.email || 'No disponible'}</div></div>
                     </div>
                 </div>`;
+
+            let boton_acceso_web = document.getElementById('modal-btn-web');
+
+            if (web == null) {
+                boton_acceso_web.classList.add("hidden")
+            } else {
+                boton_acceso_web.classList.remove("hidden")
+                boton_acceso_web.onclick = () => window.open(web);
+            }
+            
             document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${e.latitud},${e.longitud}`);
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
@@ -312,7 +329,7 @@ if (document.getElementById('map')) {
                              <div class="text-xs font-bold text-blue-800">Catálogo RESO</div>
                         </div>
                         <div class="text-sm text-blue-700 leading-snug">${s.catalogo_nombre}</div>
-                        <a href="#" class="inline-block mt-2 text-xs font-bold text-blue-600 hover:underline">Ver ficha técnica →</a>
+                        <a target="_blank" href="${s.catalogo_url}" class="inline-block mt-2 text-xs font-bold text-blue-600 hover:underline">Ver ficha técnica →</a>
                     </div>` : ''}
 
                     <div class="mt-4 pt-4 border-t">
@@ -325,6 +342,7 @@ if (document.getElementById('map')) {
                 </div>`;
             document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${s.latitud},${s.longitud}`);
             document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-btn-web').classList.add('hidden');
         };
 
         window.onload = init;
