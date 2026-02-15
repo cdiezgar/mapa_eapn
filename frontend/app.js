@@ -18,16 +18,9 @@ export const CONFIG_SECTORES = {
     "PERSONAS MAYORES": { color: "#d97706", icon: "elderly" },
 };
 
-/**
- * ENRUTADOR SECRETO: 
- * Si la URL termina en /admin, redirigimos a admin.html
- */
 function handleSecretRouting() {
     const path = window.location.pathname;
     const hash = window.location.hash;
-    
-    // Detectamos si el usuario intenta entrar a la administración
-    // Útil si usas un servidor que permite rutas limpias o simplemente por parámetro
     if (path.endsWith('/admin') || hash === '#admin') {
         window.location.href = 'admin.html';
         return true;
@@ -35,12 +28,8 @@ function handleSecretRouting() {
     return false;
 }
 
-// Solo ejecutar lógica de mapa si estamos en index.html
 if (document.getElementById('map')) {
-    
-    // Verificamos ruta antes de cargar nada
     if (handleSecretRouting()) {
-        // Detener ejecución si redirigimos
     } else {
         let estado = {
             entidades: [],
@@ -147,7 +136,14 @@ if (document.getElementById('map')) {
                 const marker = L.marker([ent.latitud, ent.longitud], { 
                     icon: L.divIcon({ html: '<div class="pin-marker"><span class="material-symbols-outlined icon-shadow" style="font-size: 48px; color: #7C3844;">location_on</span></div>', className: '', iconSize: [48, 48], iconAnchor: [24, 46] }) 
                 });
-                marker.bindTooltip(`<div class="text-center p-2"><h3 class="font-bold text-sm text-brand-red">${ent.denominacion}</h3></div>`, { direction: 'top', className: 'custom-tooltip-style' });
+                
+                // MEJORA 1: Tooltip con Logotipo y Nombre
+                marker.bindTooltip(`
+                    <div class="flex items-center gap-2 p-1">
+                        <img src="${ent.logo_url}" class="w-8 h-8 object-contain rounded border bg-white">
+                        <div class="font-bold text-xs text-brand-red leading-tight">${ent.denominacion}</div>
+                    </div>`, { direction: 'top', className: 'custom-tooltip-style' });
+                
                 marker.on('click', () => { estado.entidadSeleccionada = ent; render(); });
                 markersGroup.addLayer(marker);
             });
@@ -163,18 +159,39 @@ if (document.getElementById('map')) {
         const renderEntidadCard = (ent) => {
             const div = document.createElement('div');
             const isSel = estado.entidadSeleccionada?.entidad_id === ent.entidad_id;
-            div.className = `p-3 border-b hover:bg-red-50 cursor-pointer flex items-center gap-3 ${isSel ? 'bg-red-50 border-l-4 border-brand-red' : ''}`;
-            div.innerHTML = `<img src="${ent.logo_url}" class="w-10 h-10 object-contain border rounded-full bg-white"><h3 class="font-semibold text-xs truncate">${ent.denominacion}</h3>`;
-            div.onclick = () => { estado.entidadSeleccionada = ent; map.flyTo([ent.latitud, ent.longitud], 15); render(); };
+            div.className = `p-3 border-b hover:bg-red-50 cursor-pointer flex items-center gap-3 transition-all ${isSel ? 'bg-red-50 border-l-4 border-brand-red' : ''}`;
+            div.innerHTML = `<img src="${ent.logo_url}" class="w-10 h-10 object-contain border rounded-full bg-white"><h3 class="font-semibold text-xs truncate flex-1">${ent.denominacion}</h3><span class="material-symbols-outlined text-gray-300 text-sm">chevron_right</span>`;
+            
+            div.onclick = () => { 
+                estado.entidadSeleccionada = ent; 
+                map.flyTo([ent.latitud, ent.longitud], 15); 
+                render(); 
+                // MEJORA 2: Abrir modal al pulsar en el listado
+                window.openModalEntidad(ent);
+            };
             return div;
         };
 
         const renderServicioCard = (serv) => {
             const conf = CONFIG_SECTORES[serv.sector] || { color: "#666", icon: "circle" };
             const div = document.createElement('div');
-            div.className = "border rounded-lg p-3 bg-white hover:shadow-md cursor-pointer border-l-4";
+            // MEJORA 3: Etiquetas con fondo, icono y código catálogo
+            div.className = "border rounded-xl p-4 bg-white hover:shadow-lg cursor-pointer border-l-[6px] transition-all relative overflow-hidden group";
             div.style.borderLeftColor = conf.color;
-            div.innerHTML = `<div class="text-[8px] font-bold uppercase mb-1" style="color:${conf.color}">${serv.sector}</div><h4 class="font-bold text-xs mb-2">${serv.servicio}</h4><div class="text-[10px] text-gray-400 truncate">${serv.entidad_nombre}</div>`;
+            div.innerHTML = `
+                ${serv.cod_catalogo ? `<div class="absolute top-2 right-2 bg-blue-50 text-blue-600 font-mono font-bold text-[9px] px-1.5 py-0.5 rounded border border-blue-100">${serv.cod_catalogo}</div>` : ''}
+                <div class="flex items-center gap-1.5 mb-2">
+                    <div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold text-white shadow-sm" style="background:${conf.color}">
+                        <span class="material-symbols-outlined text-[12px]">${conf.icon}</span>
+                        ${serv.sector}
+                    </div>
+                </div>
+                <h4 class="font-bold text-sm mb-2 text-gray-800 leading-tight group-hover:text-brand-red transition-colors">${serv.servicio}</h4>
+                <div class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-50">
+                    <img src="${serv.entidad_logo}" class="w-5 h-5 object-contain rounded-full border">
+                    <div class="text-[10px] text-gray-400 truncate">${serv.entidad_nombre}</div>
+                </div>
+            `;
             div.onclick = () => window.openModalServicio(serv);
             return div;
         };
@@ -236,16 +253,75 @@ if (document.getElementById('map')) {
         window.cerrarModal = () => document.getElementById('modal-overlay').classList.add('hidden');
         window.cerrarModalCatalogo = () => document.getElementById('modal-catalogo-overlay').classList.add('hidden');
         
-        window.openModalServicio = (s) => {
-            const conf = CONFIG_SECTORES[s.sector] || { color: "#666" };
-            document.getElementById('modal-img').src = s.entidad_logo;
-            document.getElementById('modal-title').textContent = s.servicio;
-            document.getElementById('modal-subtitle').innerHTML = `<span class="px-2 py-0.5 rounded text-white text-[9px]" style="background:${conf.color}">${s.sector}</span>`;
+        // Modal genérico para Entidad
+        window.openModalEntidad = (e) => {
+            document.getElementById('modal-img').src = e.logo_url;
+            document.getElementById('modal-title').textContent = e.denominacion;
+            document.getElementById('modal-subtitle').innerHTML = `<span class="px-2 py-0.5 rounded bg-gray-200 text-gray-600 text-[9px]">ENTIDAD SOCIAL</span>`;
+            
+            // MEJORA 4: Datos de contacto completos
             document.getElementById('modal-body').innerHTML = `
                 <div class="space-y-3">
-                    <div class="p-3 bg-gray-50 rounded"><div class="text-[10px] text-gray-400 uppercase font-bold">Dirección</div><div class="text-sm">${s.direccion || 'No especificada'}</div></div>
-                    <div class="p-3 bg-gray-50 rounded"><div class="text-[10px] text-gray-400 uppercase font-bold">Entidad</div><div class="text-sm font-bold text-brand-red">${s.entidad_nombre}</div></div>
-                    ${s.cod_catalogo ? `<div class="p-3 bg-blue-50 border border-blue-100 rounded text-sm text-blue-700"><strong>Catálogo RESO:</strong> ${s.cod_catalogo} - ${s.catalogo_nombre}</div>` : ''}
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span class="material-symbols-outlined text-brand-red mt-0.5">location_on</span>
+                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Dirección</div><div class="text-sm font-medium">${e.direccion || 'No especificada'}</div></div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span class="material-symbols-outlined text-blue-500 mt-0.5">call</span>
+                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Teléfono</div><div class="text-sm font-medium">${e.telefono || 'No disponible'}</div></div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span class="material-symbols-outlined text-yellow-600 mt-0.5">mail</span>
+                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Email</div><div class="text-sm font-medium">${e.email || 'No disponible'}</div></div>
+                    </div>
+                </div>`;
+            document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${e.latitud},${e.longitud}`);
+            document.getElementById('modal-overlay').classList.remove('hidden');
+        };
+
+        // MEJORA 4: Modal de Servicio con más detalles
+        window.openModalServicio = (s) => {
+            const conf = CONFIG_SECTORES[s.sector] || { color: "#666", icon: 'help' };
+            document.getElementById('modal-img').src = s.entidad_logo;
+            document.getElementById('modal-title').textContent = s.servicio;
+            document.getElementById('modal-subtitle').innerHTML = `
+                <div class="flex items-center gap-1 px-2 py-0.5 rounded text-white text-[9px] font-bold" style="background:${conf.color}">
+                    <span class="material-symbols-outlined text-[12px]">${conf.icon}</span>
+                    ${s.sector}
+                </div>`;
+            
+            document.getElementById('modal-body').innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span class="material-symbols-outlined text-brand-red mt-0.5">location_on</span>
+                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Dirección</div><div class="text-sm font-medium">${s.direccion || 'No especificada'}</div></div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span class="material-symbols-outlined text-blue-500 mt-0.5">call</span>
+                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Teléfono</div><div class="text-sm font-medium">${s.telefono || 'Ver en entidad'}</div></div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span class="material-symbols-outlined text-yellow-600 mt-0.5">mail</span>
+                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Email</div><div class="text-sm font-medium">${s.email || 'Ver en entidad'}</div></div>
+                    </div>
+                    
+                    ${s.cod_catalogo ? `
+                    <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                        <div class="flex items-center gap-2 mb-2">
+                             <div class="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded">${s.cod_catalogo}</div>
+                             <div class="text-xs font-bold text-blue-800">Catálogo RESO</div>
+                        </div>
+                        <div class="text-sm text-blue-700 leading-snug">${s.catalogo_nombre}</div>
+                        <a href="#" class="inline-block mt-2 text-xs font-bold text-blue-600 hover:underline">Ver ficha técnica →</a>
+                    </div>` : ''}
+
+                    <div class="mt-4 pt-4 border-t">
+                        <div class="text-[9px] text-gray-400 font-bold uppercase mb-2">Entidad Titular</div>
+                        <div class="flex items-center gap-3 p-3 border rounded-xl bg-white shadow-sm">
+                            <img src="${s.entidad_logo}" class="w-8 h-8 object-contain">
+                            <span class="text-sm font-bold text-gray-700">${s.entidad_nombre}</span>
+                        </div>
+                    </div>
                 </div>`;
             document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${s.latitud},${s.longitud}`);
             document.getElementById('modal-overlay').classList.remove('hidden');

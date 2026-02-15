@@ -37,7 +37,8 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     padding: 0;
     font-family: 'Segoe UI', sans-serif;
     white-space: normal;
-    width: 200px;
+    width: auto;
+    min-width: 150px;
 }
 .leaflet-tooltip-top:before { border-top-color: white; }
 
@@ -56,5 +57,15 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 }
 
 /* Animaciones */
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .animate-fade { animation: fadeIn 0.3s ease-out; }
+
+/* Tarjetas de servicios */
+#lista-servicios > div {
+    animation: fadeIn 0.4s ease-out backwards;
+}
+
+#lista-servicios > div:nth-child(1) { animation-delay: 0.05s; }
+#lista-servicios > div:nth-child(2) { animation-delay: 0.1s; }
+#lista-servicios > div:nth-child(3) { animation-delay: 0.15s; }
+#lista-servicios > div:nth-child(4) { animation-delay: 0.2s; }
