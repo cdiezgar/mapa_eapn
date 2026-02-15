@@ -29,15 +29,16 @@ function handleSecretRouting() {
 }
 
 if (document.getElementById('map')) {
-    if (!handleSecretRouting()) {
+    if (handleSecretRouting()) {
+    } else {
         let estado = {
             entidades: [],
             servicios: [],
             catalogoCompleto: [],
             entidadSeleccionada: null,
             filtros: { texto: "", entidad: "", sector: "", catalogosSeleccionados: [] },
-            paginacionEntidades: { paginaActual: 1, itemsPorPagina: 12 }, // Aumentado para mejor visualización
-            paginacionServicios: { paginaActual: 1, itemsPorPagina: 10 }
+            paginacionEntidades: { paginaActual: 1, itemsPorPagina: 8 },
+            paginacionServicios: { paginaActual: 1, itemsPorPagina: 4 }
         };
 
         let map;
@@ -136,19 +137,14 @@ if (document.getElementById('map')) {
                     icon: L.divIcon({ html: '<div class="pin-marker"><span class="material-symbols-outlined icon-shadow" style="font-size: 48px; color: #7C3844;">location_on</span></div>', className: '', iconSize: [48, 48], iconAnchor: [24, 46] }) 
                 });
                 
-                // MEJORA: Tooltip más grande y legible
+                // MEJORA 1: Tooltip con Logotipo y Nombre
                 marker.bindTooltip(`
-                    <div class="flex items-center gap-3 p-2">
-                        <img src="${ent.logo_url}" class="w-12 h-12 object-contain rounded border bg-white shadow-sm">
-                        <div class="font-extrabold text-sm text-brand-red leading-tight max-w-[200px]">${ent.denominacion}</div>
+                    <div class="flex items-center gap-2 p-1">
+                        <img src="${ent.logo_url}" class="w-8 h-8 object-contain rounded border bg-white">
+                        <div class="font-bold text-xs text-brand-red leading-tight">${ent.denominacion}</div>
                     </div>`, { direction: 'top', className: 'custom-tooltip-style' });
                 
-                // MEJORA: Abrir modal directamente al pulsar en el mapa
-                marker.on('click', () => { 
-                    estado.entidadSeleccionada = ent; 
-                    window.openModalEntidad(ent);
-                    render(); 
-                });
+                marker.on('click', () => { estado.entidadSeleccionada = ent; render(); });
                 markersGroup.addLayer(marker);
             });
         };
@@ -170,6 +166,7 @@ if (document.getElementById('map')) {
                 estado.entidadSeleccionada = ent; 
                 map.flyTo([ent.latitud, ent.longitud], 15); 
                 render(); 
+                // MEJORA 2: Abrir modal al pulsar en el listado
                 window.openModalEntidad(ent);
             };
             return div;
@@ -178,6 +175,7 @@ if (document.getElementById('map')) {
         const renderServicioCard = (serv) => {
             const conf = CONFIG_SECTORES[serv.sector] || { color: "#666", icon: "circle" };
             const div = document.createElement('div');
+            // MEJORA 3: Etiquetas con fondo, icono y código catálogo
             div.className = "border rounded-xl p-4 bg-white hover:shadow-lg cursor-pointer border-l-[6px] transition-all relative overflow-hidden group";
             div.style.borderLeftColor = conf.color;
             div.innerHTML = `
@@ -233,13 +231,13 @@ if (document.getElementById('map')) {
             if (bpEnt) bpEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual > 1) { estado.paginacionEntidades.paginaActual--; render(); }};
             
             const bnEnt = document.getElementById('btn-next-ent');
-            if (bnEnt) bnEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual < Math.ceil(estado.entidades.length / estado.paginacionEntidades.itemsPorPagina)) { estado.paginacionEntidades.paginaActual++; render(); }};
+            if (bnEnt) bnEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual < Math.ceil(estado.entidades.length / 8)) { estado.paginacionEntidades.paginaActual++; render(); }};
 
             const bpSrv = document.getElementById('btn-prev-srv');
             if (bpSrv) bpSrv.onclick = () => { if (estado.paginacionServicios.paginaActual > 1) { estado.paginacionServicios.paginaActual--; render(); }};
             
             const bnSrv = document.getElementById('btn-next-srv');
-            if (bnSrv) bnSrv.onclick = () => { if (estado.paginacionServicios.paginaActual < Math.ceil(estado.servicios.length / estado.paginacionServicios.itemsPorPagina)) { estado.paginacionServicios.paginaActual++; render(); }};
+            if (bnSrv) bnSrv.onclick = () => { if (estado.paginacionServicios.paginaActual < Math.ceil(estado.servicios.length / 4)) { estado.paginacionServicios.paginaActual++; render(); }};
             
             const btnVerCat = document.getElementById('btn-ver-catalogo-completo');
             if (btnVerCat) btnVerCat.onclick = () => {
@@ -255,11 +253,13 @@ if (document.getElementById('map')) {
         window.cerrarModal = () => document.getElementById('modal-overlay').classList.add('hidden');
         window.cerrarModalCatalogo = () => document.getElementById('modal-catalogo-overlay').classList.add('hidden');
         
+        // Modal genérico para Entidad
         window.openModalEntidad = (e) => {
             document.getElementById('modal-img').src = e.logo_url;
             document.getElementById('modal-title').textContent = e.denominacion;
             document.getElementById('modal-subtitle').innerHTML = `<span class="px-2 py-0.5 rounded bg-gray-200 text-gray-600 text-[9px]">ENTIDAD SOCIAL</span>`;
             
+            // MEJORA 4: Datos de contacto completos
             document.getElementById('modal-body').innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
@@ -275,24 +275,11 @@ if (document.getElementById('map')) {
                         <div><div class="text-[10px] text-gray-400 uppercase font-bold">Email</div><div class="text-sm font-medium">${e.email || 'No disponible'}</div></div>
                     </div>
                 </div>`;
-            
-            // Botones inferiores
-            const footer = document.querySelector('#modal-content .p-4.bg-gray-50');
-            footer.innerHTML = `
-                <div class="flex gap-2 w-full">
-                    ${e.web_url ? `
-                    <button onclick="window.open('${e.web_url}')" class="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-800 text-white rounded shadow text-sm hover:bg-black transition">
-                        <span class="material-symbols-outlined text-[20px]">language</span> Sitio Web
-                    </button>` : ''}
-                    <button id="modal-btn-llegar" class="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 text-white rounded shadow text-sm bg-brand-red hover:bg-red-800 transition">
-                        <span class="material-symbols-outlined text-[20px]">near_me</span> Cómo llegar
-                    </button>
-                </div>`;
-            
             document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${e.latitud},${e.longitud}`);
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
 
+        // MEJORA 4: Modal de Servicio con más detalles
         window.openModalServicio = (s) => {
             const conf = CONFIG_SECTORES[s.sector] || { color: "#666", icon: 'help' };
             document.getElementById('modal-img').src = s.entidad_logo;
@@ -309,6 +296,14 @@ if (document.getElementById('map')) {
                         <span class="material-symbols-outlined text-brand-red mt-0.5">location_on</span>
                         <div><div class="text-[10px] text-gray-400 uppercase font-bold">Dirección</div><div class="text-sm font-medium">${s.direccion || 'No especificada'}</div></div>
                     </div>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span class="material-symbols-outlined text-blue-500 mt-0.5">call</span>
+                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Teléfono</div><div class="text-sm font-medium">${s.telefono || 'Ver en entidad'}</div></div>
+                    </div>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span class="material-symbols-outlined text-yellow-600 mt-0.5">mail</span>
+                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Email</div><div class="text-sm font-medium">${s.email || 'Ver en entidad'}</div></div>
+                    </div>
                     
                     ${s.cod_catalogo ? `
                     <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
@@ -316,10 +311,8 @@ if (document.getElementById('map')) {
                              <div class="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded">${s.cod_catalogo}</div>
                              <div class="text-xs font-bold text-blue-800">Catálogo RESO</div>
                         </div>
-                        <div class="text-sm text-blue-700 leading-snug mb-3">${s.catalogo_nombre}</div>
-                        <a href="${s.url_info || '#'}" target="_blank" class="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline">
-                            <span class="material-symbols-outlined text-sm">description</span> Ver ficha técnica →
-                        </a>
+                        <div class="text-sm text-blue-700 leading-snug">${s.catalogo_nombre}</div>
+                        <a href="#" class="inline-block mt-2 text-xs font-bold text-blue-600 hover:underline">Ver ficha técnica →</a>
                     </div>` : ''}
 
                     <div class="mt-4 pt-4 border-t">
@@ -330,13 +323,6 @@ if (document.getElementById('map')) {
                         </div>
                     </div>
                 </div>`;
-            
-            const footer = document.querySelector('#modal-content .p-4.bg-gray-50');
-            footer.innerHTML = `
-                <button id="modal-btn-llegar" class="w-full flex items-center justify-center gap-2 px-5 py-2.5 text-white rounded shadow text-sm bg-brand-red hover:bg-red-800 transition">
-                    <span class="material-symbols-outlined text-[20px]">near_me</span> Cómo llegar
-                </button>`;
-
             document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${s.latitud},${s.longitud}`);
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
