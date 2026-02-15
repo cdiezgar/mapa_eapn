@@ -37,8 +37,8 @@ if (document.getElementById('map')) {
             catalogoCompleto: [],
             entidadSeleccionada: null,
             filtros: { texto: "", entidad: "", sector: "", catalogosSeleccionados: [] },
-            paginacionEntidades: { paginaActual: 1, itemsPorPagina: 8 },
-            paginacionServicios: { paginaActual: 1, itemsPorPagina: 4 }
+            paginacionEntidades: { paginaActual: 1, itemsPorPagina: 100 },
+            paginacionServicios: { paginaActual: 1, itemsPorPagina: 50 }
         };
 
         let map;
@@ -53,6 +53,57 @@ if (document.getElementById('map')) {
 
             await cargarDatos();
             initEventos();
+            initMobileNavigation(); 
+        };
+        
+        // --- LÓGICA RESPONSIVE MÓVIL ---
+        const initMobileNavigation = () => {
+            const panels = {
+                'entidades': document.getElementById('panel-entidades'),
+                'mapa': document.getElementById('panel-mapa'),
+                'servicios': document.getElementById('panel-servicios')
+            };
+            const btns = {
+                'entidades': document.getElementById('nav-entidades'),
+                'mapa': document.getElementById('nav-mapa'),
+                'servicios': document.getElementById('nav-servicios')
+            };
+
+            const switchTab = (tabName) => {
+                Object.values(panels).forEach(p => {
+                    if(p) {
+                        p.classList.add('hidden');
+                        p.classList.remove('flex');
+                    }
+                });
+                
+                Object.values(btns).forEach(b => {
+                    if(b) {
+                        b.classList.remove('text-brand-red', 'bg-red-50');
+                        b.classList.add('text-gray-500');
+                    }
+                });
+
+                if(panels[tabName]) {
+                    panels[tabName].classList.remove('hidden');
+                    panels[tabName].classList.add('flex');
+                }
+                
+                if(btns[tabName]) {
+                    btns[tabName].classList.add('text-brand-red', 'bg-red-50');
+                    btns[tabName].classList.remove('text-gray-500');
+                }
+
+                if (tabName === 'mapa' && map) {
+                    setTimeout(() => {
+                        map.invalidateSize();
+                    }, 100);
+                }
+            };
+
+            if(btns.entidades) btns.entidades.onclick = () => switchTab('entidades');
+            if(btns.mapa) btns.mapa.onclick = () => switchTab('mapa');
+            if(btns.servicios) btns.servicios.onclick = () => switchTab('servicios');
         };
 
         const cargarDatos = async () => {
@@ -84,17 +135,23 @@ if (document.getElementById('map')) {
             const containerChecks = document.getElementById('catalogo-checkboxes');
             if (containerChecks) {
                 containerChecks.innerHTML = '';
-                estado.catalogoCompleto.forEach(cat => {
-                    const div = document.createElement('div');
-                    div.className = "flex items-start gap-2 hover:bg-gray-50 p-1 rounded cursor-pointer";
-                    div.innerHTML = `<input type="checkbox" value="${cat.codigo}" id="cat-${cat.codigo}" class="mt-1 cursor-pointer"><label for="cat-${cat.codigo}" class="text-xs text-gray-700 cursor-pointer leading-tight"><span class="font-bold">${cat.codigo}</span> - ${cat.nombre}</label>`;
-                    div.querySelector('input').addEventListener('change', (e) => {
-                        if (e.target.checked) estado.filtros.catalogosSeleccionados.push(e.target.value);
-                        else estado.filtros.catalogosSeleccionados = estado.filtros.catalogosSeleccionados.filter(c => c !== e.target.value);
-                        actualizarFiltros();
+                
+                // MEJORA 2: Filtrar catálogos que realmente se usan
+                const codigosUsados = new Set(estado.servicios.map(s => s.cod_catalogo).filter(c => c));
+                
+                estado.catalogoCompleto
+                    .filter(cat => codigosUsados.has(cat.codigo)) // Solo mostramos los que tienen servicios
+                    .forEach(cat => {
+                        const div = document.createElement('div');
+                        div.className = "flex items-start gap-2 hover:bg-gray-50 p-1 rounded cursor-pointer";
+                        div.innerHTML = `<input type="checkbox" value="${cat.codigo}" id="cat-${cat.codigo}" class="mt-1 cursor-pointer"><label for="cat-${cat.codigo}" class="text-xs text-gray-700 cursor-pointer leading-tight"><span class="font-bold">${cat.codigo}</span> - ${cat.nombre}</label>`;
+                        div.querySelector('input').addEventListener('change', (e) => {
+                            if (e.target.checked) estado.filtros.catalogosSeleccionados.push(e.target.value);
+                            else estado.filtros.catalogosSeleccionados = estado.filtros.catalogosSeleccionados.filter(c => c !== e.target.value);
+                            actualizarFiltros();
+                        });
+                        containerChecks.appendChild(div);
                     });
-                    containerChecks.appendChild(div);
-                });
             }
         };
 
@@ -137,7 +194,6 @@ if (document.getElementById('map')) {
                     icon: L.divIcon({ html: '<div class="pin-marker"><span class="material-symbols-outlined icon-shadow" style="font-size: 48px; color: #7C3844;">location_on</span></div>', className: '', iconSize: [48, 48], iconAnchor: [24, 46] }) 
                 });
                 
-                // MEJORA 1: Tooltip con Logotipo y Nombre
                 marker.bindTooltip(`
                     <div class="flex items-center gap-3 p-2 min-w-[220px]">
                         <img src="${ent.logo_url}" 
@@ -168,9 +224,16 @@ if (document.getElementById('map')) {
             
             div.onclick = () => { 
                 estado.entidadSeleccionada = ent; 
+                
+                // MEJORA 1: Cambiar automáticamente a pestaña Mapa en móvil si es necesario
+                const btnMap = document.getElementById('nav-mapa');
+                // Comprobamos si el botón es visible (offsetParent != null es una forma estándar de ver si es visible)
+                if (btnMap && btnMap.offsetParent !== null) {
+                    btnMap.click();
+                }
+
                 map.flyTo([ent.latitud, ent.longitud], 15); 
                 render(); 
-                // MEJORA 2: Abrir modal al pulsar en el listado
                 window.openModalEntidad(ent);
             };
             return div;
@@ -179,7 +242,6 @@ if (document.getElementById('map')) {
         const renderServicioCard = (serv) => {
             const conf = CONFIG_SECTORES[serv.sector] || { color: "#666", icon: "circle" };
             const div = document.createElement('div');
-            // MEJORA 3: Etiquetas con fondo, icono y código catálogo
             div.className = "border rounded-xl p-4 bg-white hover:shadow-lg cursor-pointer border-l-[6px] transition-all relative overflow-hidden group";
             div.style.borderLeftColor = conf.color;
             div.innerHTML = `
@@ -196,7 +258,15 @@ if (document.getElementById('map')) {
                     <div class="text-[10px] text-gray-400 truncate">${serv.entidad_nombre}</div>
                 </div>
             `;
-            div.onclick = () => window.openModalServicio(serv);
+            
+            div.onclick = () => {
+                // MEJORA 1: Cambiar automáticamente a pestaña Mapa en móvil
+                const btnMap = document.getElementById('nav-mapa');
+                if (btnMap && btnMap.offsetParent !== null) {
+                    btnMap.click();
+                }
+                window.openModalServicio(serv);
+            };
             return div;
         };
 
@@ -235,13 +305,13 @@ if (document.getElementById('map')) {
             if (bpEnt) bpEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual > 1) { estado.paginacionEntidades.paginaActual--; render(); }};
             
             const bnEnt = document.getElementById('btn-next-ent');
-            if (bnEnt) bnEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual < Math.ceil(estado.entidades.length / 8)) { estado.paginacionEntidades.paginaActual++; render(); }};
+            if (bnEnt) bnEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual < Math.ceil(estado.entidades.length / estado.paginacionEntidades.itemsPorPagina)) { estado.paginacionEntidades.paginaActual++; render(); }};
 
             const bpSrv = document.getElementById('btn-prev-srv');
             if (bpSrv) bpSrv.onclick = () => { if (estado.paginacionServicios.paginaActual > 1) { estado.paginacionServicios.paginaActual--; render(); }};
             
             const bnSrv = document.getElementById('btn-next-srv');
-            if (bnSrv) bnSrv.onclick = () => { if (estado.paginacionServicios.paginaActual < Math.ceil(estado.servicios.length / 4)) { estado.paginacionServicios.paginaActual++; render(); }};
+            if (bnSrv) bnSrv.onclick = () => { if (estado.paginacionServicios.paginaActual < Math.ceil(estado.servicios.length / estado.paginacionServicios.itemsPorPagina)) { estado.paginacionServicios.paginaActual++; render(); }};
             
             const btnVerCat = document.getElementById('btn-ver-catalogo-completo');
             if (btnVerCat) btnVerCat.onclick = () => {
@@ -257,16 +327,12 @@ if (document.getElementById('map')) {
         window.cerrarModal = () => document.getElementById('modal-overlay').classList.add('hidden');
         window.cerrarModalCatalogo = () => document.getElementById('modal-catalogo-overlay').classList.add('hidden');
         
-        // Modal genérico para Entidad
         window.openModalEntidad = (e) => {
-
             let web = e.web;
-
             document.getElementById('modal-img').src = e.logo_url;
             document.getElementById('modal-title').textContent = e.denominacion;
             document.getElementById('modal-subtitle').innerHTML = `<span class="px-2 py-0.5 rounded bg-gray-200 text-gray-600 text-[9px]">ENTIDAD SOCIAL</span>`;
             
-            // MEJORA 4: Datos de contacto completos
             document.getElementById('modal-body').innerHTML = `
                 <div class="space-y-3">
                     <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
@@ -296,7 +362,6 @@ if (document.getElementById('map')) {
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
 
-        // MEJORA 4: Modal de Servicio con más detalles
         window.openModalServicio = (s) => {
             const conf = CONFIG_SECTORES[s.sector] || { color: "#666", icon: 'help' };
             document.getElementById('modal-img').src = s.entidad_logo;
@@ -330,7 +395,13 @@ if (document.getElementById('map')) {
                         </div>
                         <div class="text-sm text-blue-700 leading-snug">${s.catalogo_nombre}</div>
                         <a target="_blank" href="${s.catalogo_url}" class="inline-block mt-2 text-xs font-bold text-blue-600 hover:underline">Ver ficha técnica →</a>
-                    </div>` : ''}
+                    </div>` : `
+                    <div class="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                        <div class="flex items-center gap-2 mb-2">
+                             <div class="text-xs font-bold text-blue-800">Servicio no catalogado en RESO</div>
+                        </div>
+                        <div class="text-sm text-blue-700 leading-snug">${s.subtipo}</div>
+                    </div>`}
 
                     <div class="mt-4 pt-4 border-t">
                         <div class="text-[9px] text-gray-400 font-bold uppercase mb-2">Entidad Titular</div>

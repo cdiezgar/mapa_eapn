@@ -17,8 +17,9 @@
 </head>
 <body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
 
+    <!-- Header: Flexible para adaptarse a móvil -->
     <header class="bg-white shadow-md p-3 z-20 border-b-4 border-brand-red shrink-0">
-        <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-wrap items-end gap-3 justify-between lg:justify-start">
             <div class="mr-4 mb-1">
                 <div class="font-bold text-2xl leading-none text-brand-red flex items-center gap-1">
                     EAPN<span class="text-gray-500">CyL</span>
@@ -26,67 +27,72 @@
                 <div class="text-[10px] text-brand-red font-semibold tracking-wider">MAPA DE RECURSOS</div>
             </div>
 
-            <!-- Filtros -->
-            <div class="flex flex-col">
-                <label for="filtro-texto" class="filter-label">Buscar servicio</label>
-                <div class="relative">
-                    <input type="text" id="filtro-texto" placeholder="Nombre..." class="border rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-red-500 bg-gray-50 w-40 pl-7 outline-none">
-                    <span class="material-symbols-outlined absolute left-1 top-1.5 text-gray-400 text-lg">search</span>
-                </div>
-            </div>
-            <div class="flex flex-col">
-                <label for="filtro-entidad" class="filter-label">Entidad</label>
-                <select id="filtro-entidad" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-40 outline-none"></select>
-            </div>
-            <div class="flex flex-col">
-                <label for="filtro-sector" class="filter-label">Sector</label>
-                <select id="filtro-sector" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-40 outline-none"></select>
-            </div>
-            <div class="flex flex-col relative group">
-                <label class="filter-label">Catálogo RESO</label>
-                <button id="btn-catalogo-dropdown" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-40 text-left flex justify-between items-center text-gray-700">
-                    <span id="catalogo-selected-text" class="truncate">Seleccionar...</span>
-                    <span class="material-symbols-outlined text-sm">arrow_drop_down</span>
-                </button>
-                <div id="catalogo-dropdown-list" class="hidden absolute top-full left-0 bg-white border shadow-lg rounded mt-1 z-50 w-80 max-h-80 overflow-y-auto p-2">
-                    <div class="mb-2 pb-2 border-b flex justify-between items-center">
-                        <span class="text-xs font-bold text-gray-500">Filtrar por códigos</span>
-                        <button id="btn-clear-catalogo" class="text-xs text-brand-red hover:underline">Limpiar</button>
+            <!-- Botón Toggle Filtros Móvil (Opcional si ocupan mucho, por ahora dejamos que fluyan) -->
+            <div class="flex flex-wrap gap-2 items-end flex-1">
+                <div class="flex flex-col grow sm:grow-0">
+                    <label for="filtro-texto" class="filter-label">Buscar servicio</label>
+                    <div class="relative w-full">
+                        <input type="text" id="filtro-texto" placeholder="Nombre..." class="border rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-red-500 bg-gray-50 w-full sm:w-40 pl-7 outline-none">
+                        <span class="material-symbols-outlined absolute left-1 top-1.5 text-gray-400 text-lg">search</span>
                     </div>
-                    <div id="catalogo-checkboxes" class="space-y-1"></div>
                 </div>
-            </div>
-            
-            <div class="flex items-end gap-2 ml-auto">
-                <button id="btn-ver-catalogo-completo" class="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm bg-brand-red transition shadow-sm">
-                    <span class="material-symbols-outlined text-sm">menu_book</span> Catálogo
-                </button>
+                <div class="flex flex-col grow sm:grow-0">
+                    <label for="filtro-entidad" class="filter-label">Entidad</label>
+                    <select id="filtro-entidad" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-40 outline-none max-w-[150px] sm:max-w-none truncate"></select>
+                </div>
+                <div class="flex flex-col grow sm:grow-0">
+                    <label for="filtro-sector" class="filter-label">Sector</label>
+                    <select id="filtro-sector" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-40 outline-none"></select>
+                </div>
+                <div class="flex flex-col relative group grow sm:grow-0">
+                    <label class="filter-label">Catálogo RESO</label>
+                    <button id="btn-catalogo-dropdown" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-40 text-left flex justify-between items-center text-gray-700">
+                        <span id="catalogo-selected-text" class="truncate">Seleccionar...</span>
+                        <span class="material-symbols-outlined text-sm">arrow_drop_down</span>
+                    </button>
+                    <div id="catalogo-dropdown-list" class="hidden absolute top-full left-0 bg-white border shadow-lg rounded mt-1 z-50 w-80 max-h-80 overflow-y-auto p-2">
+                        <div class="mb-2 pb-2 border-b flex justify-between items-center">
+                            <span class="text-xs font-bold text-gray-500">Filtrar por códigos</span>
+                            <button id="btn-clear-catalogo" class="text-xs text-brand-red hover:underline">Limpiar</button>
+                        </div>
+                        <div id="catalogo-checkboxes" class="space-y-1"></div>
+                    </div>
+                </div>
                 
-                <button id="btn-limpiar" class="flex items-center gap-1 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-sm transition text-gray-700">
-                    <span class="material-symbols-outlined text-sm">filter_alt_off</span>
-                </button>
+                <div class="flex items-end gap-2 ml-auto mt-2 lg:mt-0">
+                    <button id="btn-ver-catalogo-completo" class="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm bg-brand-red transition shadow-sm whitespace-nowrap">
+                        <span class="material-symbols-outlined text-sm">menu_book</span> <span class="hidden sm:inline">Catálogo</span>
+                    </button>
+                    
+                    <button id="btn-limpiar" class="flex items-center gap-1 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-sm transition text-gray-700">
+                        <span class="material-symbols-outlined text-sm">filter_alt_off</span>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
 
-    <main class="flex-1 grid grid-cols-4 overflow-hidden relative">
-        <!-- Entidades -->
-        <aside class="col-span-1 bg-white border-r flex flex-col h-full min-w-[280px]">
-            <div class="p-3 bg-gray-100 font-bold text-gray-700 border-b flex justify-between items-center">
+    <!-- Main Grid: 1 columna en móvil, 4 en escritorio -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-4 overflow-hidden relative">
+        
+        <!-- PESTAÑA 1: Entidades (Oculta en móvil por defecto) -->
+        <aside id="panel-entidades" class="hidden lg:flex col-span-1 bg-white border-r flex-col h-full min-w-[280px] overflow-hidden">
+            <div class="p-3 bg-gray-100 font-bold text-gray-700 border-b flex justify-between items-center shrink-0">
                 <span class="flex items-center gap-2"><span class="material-symbols-outlined text-gray-500">apartment</span> Entidades</span>
                 <span id="contador-entidades" class="text-xs bg-gray-200 px-2 py-0.5 rounded-full font-mono">0</span>
             </div>
-            <div id="lista-entidades" class="flex-1 overflow-y-auto"></div>
-            <div class="p-2 border-t bg-gray-50 flex justify-between items-center text-sm">
+            <div id="lista-entidades" class="flex-1 overflow-y-auto min-h-0"></div>
+            <div class="p-2 border-t bg-gray-50 flex justify-between items-center text-sm shrink-0">
                 <button id="btn-prev-ent" class="px-2 py-1 bg-white border rounded disabled:opacity-50 text-xs">Ant.</button>
                 <span id="info-paginacion-ent" class="text-xs text-gray-500 font-semibold font-mono">1/1</span>
                 <button id="btn-next-ent" class="px-2 py-1 bg-white border rounded disabled:opacity-50 text-xs">Sig.</button>
             </div>
         </aside>
 
-        <!-- Mapa -->
-        <section class="col-span-2 relative h-full bg-slate-100">
-            <div id="map"></div>
+        <!-- PESTAÑA 2: Mapa (Visible en móvil por defecto - Flex) -->
+        <section id="panel-mapa" class="flex lg:flex col-span-1 lg:col-span-2 relative h-full bg-slate-100 flex-col">
+            <div id="map" class="w-full h-full z-0"></div>
+            
             <!-- Modal Detalle -->
             <div id="modal-overlay" class="absolute inset-0 bg-black/40 z-[1000] hidden flex items-center justify-center p-4 backdrop-blur-[2px]">
                 <div id="modal-content" class="bg-white rounded-lg shadow-2xl w-full max-w-lg border-t-4 border-brand-red flex flex-col max-h-[90vh]">
@@ -113,14 +119,14 @@
             </div>
         </section>
 
-        <!-- Servicios -->
-        <aside class="col-span-1 bg-white border-l flex flex-col h-full min-w-[280px]">
-            <div class="p-3 bg-gray-100 font-bold text-gray-700 border-b flex justify-between items-center">
+        <!-- PESTAÑA 3: Servicios (Oculta en móvil por defecto) -->
+        <aside id="panel-servicios" class="hidden lg:flex col-span-1 bg-white border-l flex-col h-full min-w-[280px] overflow-hidden">
+            <div class="p-3 bg-gray-100 font-bold text-gray-700 border-b flex justify-between items-center shrink-0">
                 <span class="flex items-center gap-2"><span class="material-symbols-outlined text-gray-500">list</span> <span id="titulo-lista-servicios">Servicios</span></span>
                 <span id="contador-servicios" class="text-xs bg-gray-200 px-2 py-0.5 rounded-full font-mono">0</span>
             </div>
-            <div id="lista-servicios" class="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50"></div>
-            <div class="p-2 border-t bg-gray-50 flex justify-between items-center text-sm">
+            <div id="lista-servicios" class="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50 min-h-0"></div>
+            <div class="p-2 border-t bg-gray-50 flex justify-between items-center text-sm shrink-0">
                 <button id="btn-prev-srv" class="px-2 py-1 bg-white border rounded disabled:opacity-50 text-xs">Ant.</button>
                 <span id="info-paginacion-srv" class="text-xs text-gray-500 font-semibold font-mono">1/1</span>
                 <button id="btn-next-srv" class="px-2 py-1 bg-white border rounded disabled:opacity-50 text-xs">Sig.</button>
@@ -128,7 +134,24 @@
         </aside>
     </main>
 
-    <footer class="text-white p-2 border-t-2 border-brand-red shrink-0 z-30 bg-brand-red">
+    <!-- Navegación Inferior (Solo Móvil) -->
+    <nav class="lg:hidden bg-white border-t flex justify-around p-2 shrink-0 z-50 pb-safe">
+        <button id="nav-entidades" class="flex flex-col items-center gap-1 text-gray-500 p-2 rounded w-20 transition">
+            <span class="material-symbols-outlined text-2xl">apartment</span>
+            <span class="text-[10px] font-bold">Entidades</span>
+        </button>
+        <button id="nav-mapa" class="flex flex-col items-center gap-1 text-brand-red bg-red-50 p-2 rounded w-20 transition">
+            <span class="material-symbols-outlined text-2xl">map</span>
+            <span class="text-[10px] font-bold">Mapa</span>
+        </button>
+        <button id="nav-servicios" class="flex flex-col items-center gap-1 text-gray-500 p-2 rounded w-20 transition">
+            <span class="material-symbols-outlined text-2xl">list</span>
+            <span class="text-[10px] font-bold">Servicios</span>
+        </button>
+    </nav>
+
+    <!-- Footer (Oculto en móvil para ganar espacio, visible en Desktop) -->
+    <footer class="hidden lg:block text-white p-2 border-t-2 border-brand-red shrink-0 z-30 bg-brand-red">
         <div class="container mx-auto flex flex-col md:flex-row justify-between items-center text-[10px]">
             <div class="text-center md:text-left">
                 <p class="font-bold">© 2026 EAPN Castilla y León</p>
