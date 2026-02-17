@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Mapa de Recursos EAPN CyL</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,8 +15,7 @@
     
     <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
-
+<body class="bg-gray-50 h-[100dvh] flex flex-col overflow-hidden">
     <!-- Header: Flexible para adaptarse a móvil -->
     <header class="bg-white shadow-md p-3 z-20 border-b-4 border-brand-red shrink-0 transition-all duration-300">
         <div class="flex flex-wrap items-center lg:items-end gap-3 justify-between lg:justify-start">
@@ -84,9 +83,9 @@
     </header>
 
     <!-- Main Grid: 1 columna en móvil, 4 en escritorio -->
-<div id="layout-wrapper" class="flex-1 flex flex-col landscape:flex-row overflow-hidden">
+<div id="layout-wrapper" class="flex-1 flex flex-col landscape:flex-row overflow-hidden min-h-0">
 
-    <main class="flex-1 grid grid-cols-1 lg:grid-cols-4 overflow-hidden relative w-full landscape:w-auto">
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-4 overflow-hidden relative w-full landscape:w-auto min-h-0">
         
         <aside id="panel-entidades" class="hidden lg:flex col-span-1 bg-white border-r flex-col h-full min-w-[280px] overflow-hidden">
             <div class="p-3 bg-gray-100 font-bold text-gray-700 border-b flex justify-between items-center shrink-0">
