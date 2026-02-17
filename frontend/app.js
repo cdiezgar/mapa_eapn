@@ -37,8 +37,8 @@ if (document.getElementById('map')) {
             catalogoCompleto: [],
             entidadSeleccionada: null,
             filtros: { texto: "", entidad: "", sector: "", catalogosSeleccionados: [] },
-            paginacionEntidades: { paginaActual: 1, itemsPorPagina: 100 },
-            paginacionServicios: { paginaActual: 1, itemsPorPagina: 50 }
+            paginacionEntidades: { paginaActual: 1, itemsPorPagina: 20 },
+            paginacionServicios: { paginaActual: 1, itemsPorPagina: 20 }
         };
 
         let map;
@@ -294,6 +294,27 @@ if (document.getElementById('map')) {
             
             const fSec = document.getElementById('filtro-sector');
             if (fSec) fSec.addEventListener('change', e => { estado.filtros.sector = e.target.value; render(); });
+
+            const btnToggleFiltros = document.getElementById('btn-toggle-filtros');
+                if (btnToggleFiltros) {
+                    btnToggleFiltros.onclick = () => {
+                        const container = document.getElementById('contenedor-filtros');
+                        const isHidden = container.classList.contains('hidden');
+                        
+                        if (isHidden) {
+                            container.classList.remove('hidden');
+                            container.classList.add('flex');
+                            btnToggleFiltros.classList.add('bg-red-50', 'text-brand-red', 'border-red-200');
+                            btnToggleFiltros.classList.remove('bg-gray-100', 'text-gray-600');
+                        } else {
+                            container.classList.add('hidden');
+                            container.classList.remove('flex');
+                            btnToggleFiltros.classList.remove('bg-red-50', 'text-brand-red', 'border-red-200');
+                            btnToggleFiltros.classList.add('bg-gray-100', 'text-gray-600');
+                        }
+                    };
+                }
+
             
             const btnCat = document.getElementById('btn-catalogo-dropdown');
             if (btnCat) btnCat.onclick = () => document.getElementById('catalogo-dropdown-list').classList.toggle('hidden');
@@ -303,6 +324,7 @@ if (document.getElementById('map')) {
             
             const bpEnt = document.getElementById('btn-prev-ent');
             if (bpEnt) bpEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual > 1) { estado.paginacionEntidades.paginaActual--; render(); }};
+
             
             const bnEnt = document.getElementById('btn-next-ent');
             if (bnEnt) bnEnt.onclick = () => { if (estado.paginacionEntidades.paginaActual < Math.ceil(estado.entidades.length / estado.paginacionEntidades.itemsPorPagina)) { estado.paginacionEntidades.paginaActual++; render(); }};
@@ -313,8 +335,8 @@ if (document.getElementById('map')) {
             const bnSrv = document.getElementById('btn-next-srv');
             if (bnSrv) bnSrv.onclick = () => { if (estado.paginacionServicios.paginaActual < Math.ceil(estado.servicios.length / estado.paginacionServicios.itemsPorPagina)) { estado.paginacionServicios.paginaActual++; render(); }};
             
-            const btnVerCat = document.getElementById('btn-ver-catalogo-completo');
-            if (btnVerCat) btnVerCat.onclick = () => {
+            // Función reutilizable para abrir el catálogo
+            const abrirCatalogo = () => {
                 const tbody = document.getElementById('tabla-catalogo-body');
                 tbody.innerHTML = '';
                 estado.catalogoCompleto.forEach(c => {
@@ -322,6 +344,13 @@ if (document.getElementById('map')) {
                 });
                 document.getElementById('modal-catalogo-overlay').classList.remove('hidden');
             };
+
+            // Asignar evento a ambos botones (móvil y desktop)
+            const btnCatMobile = document.getElementById('btn-ver-catalogo-completo-mobile');
+            if (btnCatMobile) btnCatMobile.onclick = abrirCatalogo;
+
+            const btnCatDesktop = document.getElementById('btn-ver-catalogo-completo-desktop');
+            if (btnCatDesktop) btnCatDesktop.onclick = abrirCatalogo;
         };
 
         window.cerrarModal = () => document.getElementById('modal-overlay').classList.add('hidden');

@@ -18,8 +18,9 @@
 <body class="bg-gray-50 h-screen flex flex-col overflow-hidden">
 
     <!-- Header: Flexible para adaptarse a móvil -->
-    <header class="bg-white shadow-md p-3 z-20 border-b-4 border-brand-red shrink-0">
-        <div class="flex flex-wrap items-end gap-3 justify-between lg:justify-start">
+    <header class="bg-white shadow-md p-3 z-20 border-b-4 border-brand-red shrink-0 transition-all duration-300">
+        <div class="flex flex-wrap items-center lg:items-end gap-3 justify-between lg:justify-start">
+            
             <div class="mr-4 mb-1">
                 <div class="font-bold text-2xl leading-none text-brand-red flex items-center gap-1">
                     EAPN<span class="text-gray-500">CyL</span>
@@ -27,24 +28,34 @@
                 <div class="text-[10px] text-brand-red font-semibold tracking-wider">MAPA DE RECURSOS</div>
             </div>
 
-            <!-- Botón Toggle Filtros Móvil (Opcional si ocupan mucho, por ahora dejamos que fluyan) -->
-            <div class="flex flex-wrap gap-2 items-end flex-1">
-                <div class="flex flex-col grow sm:grow-0">
+            <div class="flex items-center gap-2 lg:hidden">
+                <button id="btn-ver-catalogo-completo-mobile" class="flex items-center gap-1 px-3 py-2 text-white rounded-lg text-xs font-bold bg-brand-red transition shadow-sm whitespace-nowrap">
+                    <span class="material-symbols-outlined text-sm">menu_book</span>
+                </button>
+
+                <button id="btn-toggle-filtros" class="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-brand-red px-3 py-2 rounded-lg transition border border-gray-200">
+                    <span class="material-symbols-outlined text-xl">tune</span>
+                    <span class="hidden sm:inline text-xs font-bold uppercase">Filtrar</span>
+                </button>
+            </div>
+
+            <div id="contenedor-filtros" class="hidden lg:flex flex-wrap gap-2 items-end flex-1 w-full lg:w-auto border-t lg:border-t-0 pt-3 lg:pt-0 mt-2 lg:mt-0 border-dashed border-gray-300">
+                <div class="flex flex-col grow sm:grow-0 w-full sm:w-auto">
                     <label for="filtro-texto" class="filter-label">Buscar servicio</label>
                     <div class="relative w-full">
                         <input type="text" id="filtro-texto" placeholder="Nombre..." class="border rounded px-2 py-1.5 text-sm focus:ring-1 focus:ring-red-500 bg-gray-50 w-full sm:w-40 pl-7 outline-none">
                         <span class="material-symbols-outlined absolute left-1 top-1.5 text-gray-400 text-lg">search</span>
                     </div>
                 </div>
-                <div class="flex flex-col grow sm:grow-0">
+                <div class="flex flex-col grow sm:grow-0 w-1/2 sm:w-auto pr-1 sm:pr-0">
                     <label for="filtro-entidad" class="filter-label">Entidad</label>
-                    <select id="filtro-entidad" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-40 outline-none max-w-[150px] sm:max-w-none truncate"></select>
+                    <select id="filtro-entidad" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-40 outline-none max-w-full sm:max-w-none truncate"></select>
                 </div>
-                <div class="flex flex-col grow sm:grow-0">
+                <div class="flex flex-col grow sm:grow-0 w-1/2 sm:w-auto pl-1 sm:pl-0">
                     <label for="filtro-sector" class="filter-label">Sector</label>
                     <select id="filtro-sector" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-40 outline-none"></select>
                 </div>
-                <div class="flex flex-col relative group grow sm:grow-0">
+                <div class="flex flex-col relative group grow sm:grow-0 w-full sm:w-auto">
                     <label class="filter-label">Catálogo RESO</label>
                     <button id="btn-catalogo-dropdown" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-40 text-left flex justify-between items-center text-gray-700">
                         <span id="catalogo-selected-text" class="truncate">Seleccionar...</span>
@@ -59,9 +70,9 @@
                     </div>
                 </div>
                 
-                <div class="flex items-end gap-2 ml-auto mt-2 lg:mt-0">
-                    <button id="btn-ver-catalogo-completo" class="flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm bg-brand-red transition shadow-sm whitespace-nowrap">
-                        <span class="material-symbols-outlined text-sm">menu_book</span> <span class="hidden sm:inline">Catálogo</span>
+                <div class="flex items-end gap-2 ml-auto mt-2 lg:mt-0 w-full lg:w-auto justify-end">
+                    <button id="btn-ver-catalogo-completo-desktop" class="hidden lg:flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm bg-brand-red transition shadow-sm whitespace-nowrap">
+                        <span class="material-symbols-outlined text-sm">menu_book</span> <span>Catálogo</span>
                     </button>
                     
                     <button id="btn-limpiar" class="flex items-center gap-1 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-sm transition text-gray-700">
@@ -73,9 +84,10 @@
     </header>
 
     <!-- Main Grid: 1 columna en móvil, 4 en escritorio -->
-    <main class="flex-1 grid grid-cols-1 lg:grid-cols-4 overflow-hidden relative">
+<div id="layout-wrapper" class="flex-1 flex flex-col landscape:flex-row overflow-hidden">
+
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-4 overflow-hidden relative w-full landscape:w-auto">
         
-        <!-- PESTAÑA 1: Entidades (Oculta en móvil por defecto) -->
         <aside id="panel-entidades" class="hidden lg:flex col-span-1 bg-white border-r flex-col h-full min-w-[280px] overflow-hidden">
             <div class="p-3 bg-gray-100 font-bold text-gray-700 border-b flex justify-between items-center shrink-0">
                 <span class="flex items-center gap-2"><span class="material-symbols-outlined text-gray-500">apartment</span> Entidades</span>
@@ -89,37 +101,11 @@
             </div>
         </aside>
 
-        <!-- PESTAÑA 2: Mapa (Visible en móvil por defecto - Flex) -->
         <section id="panel-mapa" class="flex lg:flex col-span-1 lg:col-span-2 relative h-full bg-slate-100 flex-col">
             <div id="map" class="w-full h-full z-0"></div>
-            
-            <!-- Modal Detalle -->
-            <div id="modal-overlay" class="absolute inset-0 bg-black/40 z-[1000] hidden flex items-center justify-center p-4 backdrop-blur-[2px]">
-                <div id="modal-content" class="bg-white rounded-lg shadow-2xl w-full max-w-lg border-t-4 border-brand-red flex flex-col max-h-[90vh]">
-                    <div class="flex justify-between items-start p-4 border-b bg-gray-50 rounded-t-lg">
-                        <div class="flex items-center gap-4">
-                            <img id="modal-img" src="" class="w-14 h-14 object-contain bg-white border p-1 rounded-full shadow-sm">
-                            <div>
-                                <span id="modal-subtitle" class="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded inline-block mb-1"></span>
-                                <h2 id="modal-title" class="font-bold text-xl text-gray-800 leading-tight"></h2>
-                            </div>
-                        </div>
-                        <button onclick="cerrarModal()" class="text-gray-400 hover:text-red-500 transition"><span class="material-symbols-outlined">close</span></button>
-                    </div>
-                    <div id="modal-body" class="p-6 space-y-4 overflow-y-auto"></div>
-                    <div class="p-4 bg-gray-50 rounded-b-lg flex justify-end border-t">
-                        <button id="modal-btn-web" class="flex items-center gap-2 px-5 py-2.5 text-white rounded shadow text-sm bg-brand-red mx-2 hidden">
-                            <span class="material-symbols-outlined text-[20px]">web</span> Sitio web
-                        </button>
-                        <button id="modal-btn-llegar" class="flex items-center gap-2 px-5 py-2.5 text-white rounded shadow text-sm bg-brand-red">
-                            <span class="material-symbols-outlined text-[20px]">near_me</span> Cómo llegar
-                        </button>
-                    </div>
-                </div>
-            </div>
+
         </section>
 
-        <!-- PESTAÑA 3: Servicios (Oculta en móvil por defecto) -->
         <aside id="panel-servicios" class="hidden lg:flex col-span-1 bg-white border-l flex-col h-full min-w-[280px] overflow-hidden">
             <div class="p-3 bg-gray-100 font-bold text-gray-700 border-b flex justify-between items-center shrink-0">
                 <span class="flex items-center gap-2"><span class="material-symbols-outlined text-gray-500">list</span> <span id="titulo-lista-servicios">Servicios</span></span>
@@ -134,21 +120,21 @@
         </aside>
     </main>
 
-    <!-- Navegación Inferior (Solo Móvil) -->
-    <nav class="lg:hidden bg-white border-t flex justify-around p-2 shrink-0 z-50 pb-safe">
-        <button id="nav-entidades" class="flex flex-col items-center gap-1 text-gray-500 p-2 rounded w-20 transition">
+    <nav class="lg:hidden bg-white border-t landscape:border-t-0 landscape:border-l flex flex-row landscape:flex-col justify-around landscape:justify-start landscape:gap-4 p-2 shrink-0 z-50 pb-safe landscape:pb-2 landscape:w-20 landscape:h-full">
+        <button id="nav-entidades" class="flex flex-col items-center justify-center gap-1 text-gray-500 p-2 rounded w-20 landscape:w-full transition hover:bg-gray-50">
             <span class="material-symbols-outlined text-2xl">apartment</span>
             <span class="text-[10px] font-bold">Entidades</span>
         </button>
-        <button id="nav-mapa" class="flex flex-col items-center gap-1 text-brand-red bg-red-50 p-2 rounded w-20 transition">
+        <button id="nav-mapa" class="flex flex-col items-center justify-center gap-1 text-brand-red bg-red-50 p-2 rounded w-20 landscape:w-full transition">
             <span class="material-symbols-outlined text-2xl">map</span>
             <span class="text-[10px] font-bold">Mapa</span>
         </button>
-        <button id="nav-servicios" class="flex flex-col items-center gap-1 text-gray-500 p-2 rounded w-20 transition">
+        <button id="nav-servicios" class="flex flex-col items-center justify-center gap-1 text-gray-500 p-2 rounded w-20 landscape:w-full transition hover:bg-gray-50">
             <span class="material-symbols-outlined text-2xl">list</span>
             <span class="text-[10px] font-bold">Servicios</span>
         </button>
     </nav>
+</div>
 
     <!-- Footer (Oculto en móvil para ganar espacio, visible en Desktop) -->
     <footer class="hidden lg:block text-white p-2 border-t-2 border-brand-red shrink-0 z-30 bg-brand-red">
@@ -179,6 +165,37 @@
                         <tbody id="tabla-catalogo-body" class="divide-y divide-gray-100"></tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="fixed inset-0 z-[9999] hidden flex items-center justify-center sm:p-4 backdrop-blur-sm bg-black/60 transition-opacity">
+        
+        <div id="modal-content" class="bg-white w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl shadow-2xl flex flex-col overflow-hidden animate-fade">
+            
+            <div class="flex justify-between items-start p-3 sm:p-4 border-b bg-white z-10 shrink-0 shadow-sm">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <img id="modal-img" src="" class="w-12 h-12 sm:w-14 sm:h-14 object-contain bg-white border p-1 rounded-full shadow-sm shrink-0">
+                    <div class="min-w-0">
+                        <span id="modal-subtitle" class="text-[9px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded inline-block mb-0.5 truncate max-w-full"></span>
+                        <h2 id="modal-title" class="font-bold text-lg sm:text-xl text-gray-800 leading-tight truncate sm:whitespace-normal"></h2>
+                    </div>
+                </div>
+                <button onclick="cerrarModal()" class="p-2 -mr-2 text-gray-400 hover:text-red-500 transition rounded-full hover:bg-gray-100">
+                    <span class="material-symbols-outlined text-2xl">close</span>
+                </button>
+            </div>
+
+            <div id="modal-body" class="flex-1 p-4 space-y-4 overflow-y-auto bg-gray-50/50">
+                </div>
+
+            <div class="p-3 sm:p-4 bg-white border-t shrink-0 flex gap-2 justify-end shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <button id="modal-btn-web" class="flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-3 sm:py-2.5 text-white rounded-lg shadow text-sm bg-brand-black hover:bg-black transition hidden">
+                    <span class="material-symbols-outlined text-[18px]">language</span> <span class="font-bold">Web</span>
+                </button>
+                <button id="modal-btn-llegar" class="flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-3 sm:py-2.5 text-white rounded-lg shadow text-sm bg-brand-red hover:opacity-90 transition">
+                    <span class="material-symbols-outlined text-[18px]">near_me</span> <span class="font-bold">Ir ahora</span>
+                </button>
             </div>
         </div>
     </div>

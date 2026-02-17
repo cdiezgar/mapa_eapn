@@ -177,6 +177,7 @@ function setEditMode(item) {
         f.direccion.value = item.direccion;
         f.telefono.value = item.telefono || '';
         f.email.value = item.email || '';
+        f.web.value = item.web || '';
         f.logo_url.value = item.logo_url || '';
         f.latitud.value = item.latitud || '';
         f.longitud.value = item.longitud || '';
