@@ -190,21 +190,26 @@ if (document.getElementById('map')) {
             markersGroup.clearLayers();
             entFiltradas.forEach(ent => {
                 if (!ent.latitud || !ent.longitud) return;
+
                 const marker = L.marker([ent.latitud, ent.longitud], { 
-                    icon: L.divIcon({ html: '<div class="pin-marker"><span class="material-symbols-outlined icon-shadow" style="font-size: 48px; color: #7C3844;">location_on</span></div>', className: '', iconSize: [48, 48], iconAnchor: [24, 46] }) 
+                    icon: L.divIcon({ 
+                        // Usamos un contenedor que incluya la imagen del logo
+                        html: `
+                            <div class="custom-pin">
+                                <img src="${ent.logo_url}" class="pin-logo">
+                                <span class="material-symbols-outlined pin-icon">location_on</span>
+                            </div>`, 
+                        className: '', 
+                        iconSize: [50, 50], 
+                        iconAnchor: [25, 50] 
+                    }) 
                 });
                 
-                marker.bindTooltip(`
-                    <div class="flex items-center gap-3 p-2 min-w-[220px]">
-                        <img src="${ent.logo_url}" 
-                            class="w-14 h-14 object-contain rounded border bg-white p-1">
-                        <div class="font-bold text-sm text-brand-red leading-tight">
-                            ${ent.denominacion}
-                        </div>
-                    </div>
-                `, { direction: 'top', className: 'custom-tooltip-style' });
+                marker.on('click', () => { 
+                    estado.entidadSeleccionada = ent;
+                    window.openModalEntidad(ent); // Abre la info directamente al tocar
+                });
                 
-                marker.on('click', () => { estado.entidadSeleccionada = ent; render(); window.openModalEntidad(ent);});
                 markersGroup.addLayer(marker);
             });
         };
@@ -223,16 +228,8 @@ if (document.getElementById('map')) {
             div.innerHTML = `<img src="${ent.logo_url}" class="w-10 h-10 object-contain border rounded-full bg-white"><h3 class="font-semibold text-xs truncate flex-1">${ent.denominacion}</h3><span class="material-symbols-outlined text-gray-300 text-sm">chevron_right</span>`;
             
             div.onclick = () => { 
-                estado.entidadSeleccionada = ent; 
-                
-                // MEJORA 1: Cambiar automáticamente a pestaña Mapa en móvil si es necesario
-                const btnMap = document.getElementById('nav-mapa');
-                // Comprobamos si el botón es visible (offsetParent != null es una forma estándar de ver si es visible)
-                if (btnMap && btnMap.offsetParent !== null) {
-                    btnMap.click();
-                }
+                estado.entidadSeleccionada = ent;  
 
-                map.flyTo([ent.latitud, ent.longitud], 15); 
                 render(); 
                 window.openModalEntidad(ent);
             };

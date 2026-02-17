@@ -58,6 +58,8 @@ async function showAdminPanel(user) {
 
     await loadData();
     initAdminEvents();
+    initResizer(); 
+    initMobileMenu(); // Inicializar menú móvil
     renderList();
     initMapFunctions();
 }
@@ -75,7 +77,15 @@ async function loadData() {
 
     const selEnt = document.getElementById('admin-select-entidad');
     selEnt.innerHTML = '<option value="">Seleccione Entidad...</option>';
-    adminState.entidades.forEach(e => selEnt.innerHTML += `<option value="${e.entidad_id}">${e.denominacion}</option>`);
+    
+    const filterEnt = document.getElementById('admin-filter-entidad');
+    filterEnt.innerHTML = '<option value="">Todas las Entidades</option>';
+
+    adminState.entidades.forEach(e => {
+        const opt = `<option value="${e.entidad_id}">${e.denominacion}</option>`;
+        selEnt.innerHTML += opt;
+        filterEnt.innerHTML += opt;
+    });
 
     const selCat = document.getElementById('admin-select-catalogo');
     selCat.innerHTML = '<option value="">-- No catalogado --</option>';
@@ -93,7 +103,14 @@ function initAdminEvents() {
     };
 
     document.getElementById('admin-search').oninput = renderList;
-    document.getElementById('btn-crear-nuevo').onclick = resetForm;
+    document.getElementById('admin-filter-entidad').onchange = renderList;
+
+    document.getElementById('btn-crear-nuevo').onclick = () => {
+        resetForm();
+        // Cerrar menú en móvil si se pulsa nuevo
+        toggleMobileMenu(false);
+    };
+
     document.getElementById('form-entidad').onsubmit = handleSave;
     document.getElementById('form-servicio').onsubmit = handleSave;
     document.getElementById('btn-delete-entidad').onclick = () => handleDelete('entidad');
@@ -118,6 +135,64 @@ function initAdminEvents() {
     };
 }
 
+// NUEVA: Gestión del menú móvil
+function initMobileMenu() {
+    const btnOpen = document.getElementById('btn-mobile-menu');
+    const btnClose = document.getElementById('btn-close-menu');
+    const overlay = document.getElementById('mobile-overlay');
+
+    btnOpen.onclick = () => toggleMobileMenu(true);
+    btnClose.onclick = () => toggleMobileMenu(false);
+    overlay.onclick = () => toggleMobileMenu(false);
+}
+
+function toggleMobileMenu(show) {
+    const sidebar = document.getElementById('admin-sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+
+    if (show) {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+        // Pequeño timeout para que la transición de opacidad funcione al quitar hidden
+        setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+    } else {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('opacity-0');
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+    }
+}
+
+function initResizer() {
+    const sidebar = document.getElementById('admin-sidebar');
+    const resizer = document.getElementById('drag-handle');
+    let isResizing = false;
+
+    resizer.addEventListener('mousedown', (e) => {
+        if (window.innerWidth < 768) return; // Desactivar en móvil
+        isResizing = true;
+        document.body.style.cursor = 'col-resize';
+        resizer.classList.add('resizing');
+        document.body.style.userSelect = 'none'; 
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const newWidth = e.clientX;
+        if (newWidth > 300 && newWidth < window.innerWidth * 0.8) {
+            sidebar.style.width = `${newWidth}px`;
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            resizer.classList.remove('resizing');
+        }
+    });
+}
+
 window.switchTab = (tab) => {
     adminState.activeTab = tab;
     const isEnt = tab === 'tab-entidad';
@@ -127,6 +202,11 @@ window.switchTab = (tab) => {
     
     document.getElementById('form-entidad').classList.toggle('hidden', !isEnt);
     document.getElementById('form-servicio').classList.toggle('hidden', isEnt);
+    
+    document.getElementById('filter-entidad-container').classList.toggle('hidden', isEnt);
+
+    document.getElementById('admin-filter-entidad').value = "";
+    document.getElementById('admin-search').value = "";
     
     resetForm();
     renderList();
@@ -150,20 +230,69 @@ function resetForm() {
 function renderList() {
     const container = document.getElementById('admin-list-container');
     const search = document.getElementById('admin-search').value.toLowerCase();
+    const filterEntidadId = document.getElementById('admin-filter-entidad').value; 
     container.innerHTML = '';
 
-    const items = adminState.activeTab === 'tab-entidad' 
-        ? adminState.entidades.filter(e => e.denominacion.toLowerCase().includes(search))
-        : adminState.servicios.filter(s => s.servicio.toLowerCase().includes(search));
+    if (adminState.activeTab === 'tab-entidad') {
+        const items = adminState.entidades.filter(e => e.denominacion.toLowerCase().includes(search));
 
-    items.forEach(item => {
-        const div = document.createElement('div');
-        div.className = "p-3 bg-white border rounded-lg hover:border-brand-red cursor-pointer transition shadow-sm group flex justify-between items-center";
-        const title = adminState.activeTab === 'tab-entidad' ? item.denominacion : item.servicio;
-        div.innerHTML = `<div class="text-xs font-bold text-gray-700 truncate w-full">${title}</div><span class="material-symbols-outlined text-gray-300 group-hover:text-brand-red text-sm">edit</span>`;
-        div.onclick = () => setEditMode(item);
-        container.appendChild(div);
-    });
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = "p-3 bg-white border rounded-lg hover:border-brand-red cursor-pointer transition shadow-sm group flex justify-between items-center min-h-[50px]";
+            div.innerHTML = `<div class="text-xs font-bold text-gray-700 whitespace-normal leading-tight w-full pr-2">${item.denominacion}</div><span class="material-symbols-outlined text-gray-300 group-hover:text-brand-red text-sm shrink-0">edit</span>`;
+            div.onclick = () => {
+                setEditMode(item);
+                toggleMobileMenu(false); // Cerrar menú en móvil al seleccionar
+            };
+            container.appendChild(div);
+        });
+
+    } else {
+        let serviciosEnriquecidos = adminState.servicios.map(s => {
+            const entidad = adminState.entidades.find(e => e.entidad_id === s.entidad_id);
+            return {
+                ...s,
+                nombre_entidad: entidad ? entidad.denominacion : 'Sin Entidad Asignada'
+            };
+        });
+
+        serviciosEnriquecidos = serviciosEnriquecidos.filter(s => {
+            const matchesText = s.servicio.toLowerCase().includes(search) || s.nombre_entidad.toLowerCase().includes(search);
+            const matchesEntidad = filterEntidadId === "" || String(s.entidad_id) === filterEntidadId;
+            return matchesText && matchesEntidad;
+        });
+
+        serviciosEnriquecidos.sort((a, b) => {
+            if (a.nombre_entidad < b.nombre_entidad) return -1;
+            if (a.nombre_entidad > b.nombre_entidad) return 1;
+            return a.servicio.localeCompare(b.servicio);
+        });
+
+        let lastEntidad = null;
+
+        serviciosEnriquecidos.forEach(item => {
+            if (item.nombre_entidad !== lastEntidad) {
+                const header = document.createElement('div');
+                header.className = "sticky top-0 bg-gray-100 z-10 px-1 py-2 text-[10px] font-black text-brand-red uppercase tracking-widest border-b border-gray-200 mt-2 mb-1 whitespace-normal break-words";
+                header.textContent = item.nombre_entidad;
+                container.appendChild(header);
+                lastEntidad = item.nombre_entidad;
+            }
+
+            const div = document.createElement('div');
+            div.className = "ml-2 p-3 bg-white border rounded-lg hover:border-brand-red cursor-pointer transition shadow-sm group flex justify-between items-center mb-1";
+            div.innerHTML = `<div class="text-xs font-medium text-gray-700 w-full">${item.servicio}</div><span class="material-symbols-outlined text-gray-300 group-hover:text-brand-red text-sm">edit</span>`;
+            div.onclick = () => {
+                setEditMode(item);
+                toggleMobileMenu(false); // Cerrar menú en móvil al seleccionar
+            };
+            container.appendChild(div);
+        });
+        
+        if (serviciosEnriquecidos.length === 0) {
+            container.innerHTML = '<div class="text-center text-xs text-gray-400 mt-4">No se encontraron servicios.</div>';
+        }
+    }
 }
 
 function setEditMode(item) {
@@ -211,17 +340,14 @@ async function handleSave(e) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
     
-    // CORRECCIÓN: Solo borrar el ID correspondiente a la tabla que estamos insertando
     if (adminState.modo === 'create') {
         if (adminState.activeTab === 'tab-entidad') {
             delete data.entidad_id; 
         } else {
             delete data.servicio_id;
-            // IMPORTANTE: NO borrar entidad_id aquí, se necesita para la relación
         }
     }
     
-    // Formatear coordenadas
     if (data.latitud === "" || data.latitud === undefined) data.latitud = null;
     else data.latitud = parseFloat(data.latitud);
     
@@ -239,9 +365,9 @@ async function handleSave(e) {
             if (res.error) throw res.error;
 
         } else {
-            const entidad_id_referencia = data.entidad_id; // Guardamos la referencia
+            const entidad_id_referencia = data.entidad_id; 
             const srvData = { ...data };
-            delete srvData.entidad_id; // Quitamos de los datos de la tabla eapn_servicio
+            delete srvData.entidad_id; 
             
             const isReso = document.getElementById('toggle-reso').checked;
             if (isReso) srvData.subtipo = null;

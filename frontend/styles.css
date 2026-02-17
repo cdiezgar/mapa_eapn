@@ -77,3 +77,145 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 #lista-servicios > div:nth-child(2) { animation-delay: 0.1s; }
 #lista-servicios > div:nth-child(3) { animation-delay: 0.15s; }
 #lista-servicios > div:nth-child(4) { animation-delay: 0.2s; }
+
+/* Contenedor del pin personalizado */
+.custom-pin {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+}
+
+/* El icono de ubicación de Google de fondo */
+.pin-icon {
+    font-size: 50px !important;
+    color: #7C3844;
+    position: absolute;
+    bottom: 0;
+    z-index: 1;
+    filter: drop-shadow(0px 3px 2px rgba(0,0,0,0.3));
+}
+
+/* El logo de la entidad flotando sobre el pin */
+.pin-logo {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    background: white;
+    border-radius: 50%;
+    z-index: 2;
+    position: absolute;
+    top: 6px; /* Ajustado para que quede en el círculo del pin */
+    border: 2px solid white;
+}
+
+/* Asegura que los títulos en los modales permitan varias líneas */
+#modal-title {
+    white-space: normal !important; /* Permite el salto de línea */
+    overflow: visible !important;   /* Muestra todo el contenido */
+    text-overflow: clip !important; /* Elimina los puntos suspensivos */
+    display: block !important;      /* Asegura comportamiento de bloque */
+    line-height: 1.25;              /* Ajusta el espacio entre líneas para legibilidad */
+    word-break: break-word;         /* Rompe palabras largas si es necesario */
+}
+
+/* Ajuste adicional para el subtítulo si fuera necesario */
+#modal-subtitle {
+    white-space: normal !important;
+    display: flex;
+    flex-wrap: wrap; /* Permite que las etiquetas bajen de línea en móvil */
+    gap: 4px;
+}
+
+/* Estilos específicos para componentes del administrador que no están en styles.css */
+.login-backdrop { background: linear-gradient(135deg, #7C3844 0%, #1D1D1B 100%); }
+#map-canvas { height: 400px; width: 100%; border-radius: 0.5rem; }
+.modal-shadow { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1); }
+
+/* Personalización de la barra de desplazamiento para el panel lateral */
+nav::-webkit-scrollbar { width: 6px; height: 6px; }
+nav::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 3px; }
+nav::-webkit-scrollbar-track { background-color: transparent; }
+
+/* Estilos para el manejador de redimensionamiento */
+.resizer {
+    width: 4px;
+    cursor: col-resize;
+    background-color: transparent;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+    z-index: 50;
+    margin-left: -2px; /* Centrar visualmente sobre el borde */
+}
+.resizer:hover, .resizer.resizing {
+    background-color: #ef4444; /* brand-red */
+    width: 6px; /* Hacerlo un poco más grueso al interactuar */
+}
+
+/* AJUSTES MÓVILES IMPORTANTES (Ancho < 768px O Alto < 650px) */
+@media (max-width: 768px), (max-height: 650px) {
+    /* 1. Forzar estilo de sidebar móvil (flotante y oculto por defecto) */
+    #admin-sidebar {
+        position: fixed !important; /* Forzar fixed aunque Tailwind diga static */
+        top: 0; bottom: 0; left: 0;
+        width: 85vw !important;
+        max-width: 350px !important;
+        transform: translateX(-100%); /* Oculto por defecto */
+        z-index: 40;
+    }
+
+    /* 2. Si NO tiene la clase -translate-x-full (está abierto), forzarlo a visible */
+    #admin-sidebar:not(.-translate-x-full) {
+        transform: translateX(0) !important;
+    }
+
+    /* 3. Ocultar resizer */
+    #drag-handle { display: none !important; }
+
+    /* 4. Forzar que aparezca el botón de menú */
+    #btn-mobile-menu { display: block !important; }
+
+    /* 5. Ocultar elementos de escritorio que puedan molestar en pantallas bajitas */
+    #user-display { display: none !important; }
+}
+
+/* AJUSTES ESPECÍFICOS PARA MODO APAISADO (Poca altura) */
+@media (max-height: 650px) {
+    /* Quitar margen superior para aprovechar pantalla */
+    #admin-sidebar > div:first-child {
+        margin-top: 0 !important;
+        padding: 0.5rem !important;
+        /* Convertir en flex para poner botones en línea */
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: space-between;
+    }
+
+    /* Título y botón cerrar: ancho completo */
+    #admin-sidebar > div:first-child > div:first-child {
+        width: 100%;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Botones de pestañas más compactos y en línea */
+    #btn-tab-entidad, #btn-tab-servicio {
+        width: 48% !important; /* Mitad de ancho cada uno */
+        padding: 0.5rem !important;
+        font-size: 0.75rem !important;
+        flex: 1;
+    }
+
+    /* Reducir padding del contenedor inferior */
+    #admin-sidebar > div:last-child {
+        padding: 0.5rem !important;
+    }
+
+    /* Botón "Nuevo Registro" más pequeño */
+    #btn-crear-nuevo {
+        padding: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+}
