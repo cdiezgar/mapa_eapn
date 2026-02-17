@@ -98,18 +98,62 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     filter: drop-shadow(0px 3px 2px rgba(0,0,0,0.3));
 }
 
-/* El logo de la entidad flotando sobre el pin */
-.pin-logo {
-    width: 26px;
-    height: 26px;
-    object-fit: contain;
-    background: white;
-    border-radius: 50%;
-    z-index: 2;
-    position: absolute;
-    top: 6px; /* Ajustado para que quede en el círculo del pin */
-    border: 2px solid white;
+/* --- ESTILO CHINCHETA (Map Pin) --- */
+
+/* 1. El contenedor define el espacio total de la chincheta */
+.custom-pin {
+    position: relative;
+    width: 64px;          /* Ancho del círculo */
+    height: 80px;         /* Alto total (64px círculo + 16px pico) */
+    display: flex;
+    justify-content: center;
+    filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.4)); /* Sombra realista para todo el conjunto */
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Efecto rebote al pasar ratón */
 }
+
+/* Efecto hover: la chincheta salta un poco */
+.custom-pin:hover {
+    transform: translateY(-5px) scale(1.1);
+    z-index: 1000 !important;
+}
+
+/* 2. La imagen es la cabeza de la chincheta */
+.pin-logo {
+    width: 64px !important;
+    height: 64px !important;
+    box-sizing: border-box !important;
+    border-radius: 50% !important;
+    background: white;
+    object-fit: contain;
+    z-index: 2; /* Encima del pico */
+    
+    /* MAGIA: El borde toma el color de la variable que pasamos por JS */
+    border: 4px solid var(--pin-color, #7C3844) !important; 
+    padding: 2px; /* Espacio blanco entre logo y borde */
+}
+
+/* 3. El pico de la chincheta (Triángulo inferior) */
+.custom-pin::after {
+    content: '';
+    position: absolute;
+    bottom: 0;           /* Abajo del todo */
+    width: 0;
+    height: 0;
+    
+    /* Dibujamos el triángulo con bordes transparentes */
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    
+    /* El color del triángulo también usa la variable */
+    border-top: 22px solid var(--pin-color, #7C3844);
+    
+    /* Ajuste fino para que el triángulo quede pegado debajo del círculo */
+    top: 58px; 
+    z-index: 1;
+}
+
+/* Ocultamos el icono antiguo si quedara rastro */
+.pin-icon { display: none !important; }
 
 /* Asegura que los títulos en los modales permitan varias líneas */
 #modal-title {

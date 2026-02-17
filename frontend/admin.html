@@ -111,6 +111,11 @@
                     <button onclick="switchTab('tab-servicio')" id="btn-tab-servicio" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition text-gray-500 hover:bg-gray-100">
                         <span class="material-symbols-outlined">list</span> SERVICIOS
                     </button>
+
+                    <button onclick="switchTab('tab-sede')" id="btn-tab-sede" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition text-gray-500 hover:bg-gray-100">
+                        <span class="material-symbols-outlined">store</span> SEDES
+                    </button>
+
                 </div>
                 <div class="p-4 flex-1 flex flex-col overflow-hidden">
                     <button id="btn-crear-nuevo" class="w-full mb-4 bg-brand-black text-white text-[10px] font-black py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-black transition uppercase tracking-wider">
@@ -229,6 +234,42 @@
                         <div class="flex flex-col md:flex-row gap-4 pt-6 border-t">
                             <button type="submit" class="flex-1 bg-brand-red text-white font-bold py-3 rounded-lg hover:opacity-90 transition uppercase text-sm tracking-widest">Guardar Servicio</button>
                             <button type="button" id="btn-delete-servicio" class="hidden px-6 py-3 bg-red-50 text-red-600 font-bold rounded-lg border border-red-200 hover:bg-red-100 transition uppercase text-xs">Eliminar</button>
+                        </div>
+                    </form>
+
+
+                    <form id="form-sede" class="hidden space-y-6 animate-fade">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                            
+                            <div class="md:col-span-2">
+                                <label class="filter-label">Entidad a la que pertenece *</label>
+                                <select name="entidad_id" id="admin-select-entidad-sede" required class="w-full border rounded-lg p-3 text-sm bg-blue-50 border-blue-200"></select>
+                            </div>
+
+                            <div class="md:col-span-2"><label class="filter-label">Dirección Postal *</label><input type="text" name="direccion" required class="w-full border rounded-lg p-3 text-sm bg-gray-50"></div>
+                            <div><label class="filter-label">Municipio</label><input type="text" name="municipio" class="w-full border rounded-lg p-3 text-sm"></div>
+                            <div><label class="filter-label">Provincia</label><input type="text" name="provincia" class="w-full border rounded-lg p-3 text-sm"></div>
+                            <div><label class="filter-label">Código Postal</label><input type="text" name="codigo_postal" class="w-full border rounded-lg p-3 text-sm"></div>
+                            
+                            <div><label class="filter-label">Teléfono de la Sede</label><input type="text" name="telefono" class="w-full border rounded-lg p-3 text-sm"></div>
+                            <div><label class="filter-label">Email de la Sede</label><input type="email" name="email" class="w-full border rounded-lg p-3 text-sm"></div>
+
+                            <div class="md:col-span-2 bg-gray-50 p-6 rounded-xl border border-dashed border-gray-300">
+                                <div class="flex justify-between items-center mb-4">
+                                    <label class="filter-label !mb-0">Ubicación Geográfica</label>
+                                    <button type="button" onclick="openMapPicker('sede')" class="text-[10px] font-black text-brand-red flex items-center gap-1 hover:underline uppercase tracking-tighter">
+                                        <span class="material-symbols-outlined text-sm">map</span> Seleccionar en Mapa
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <input type="number" step="any" name="latitud" id="sede-lat" placeholder="Latitud" class="w-full border rounded-lg p-3 text-sm bg-white">
+                                    <input type="number" step="any" name="longitud" id="sede-lng" placeholder="Longitud" class="w-full border rounded-lg p-3 text-sm bg-white">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col md:flex-row gap-4 pt-6 border-t">
+                            <button type="submit" class="flex-1 bg-brand-red text-white font-bold py-3 rounded-lg hover:opacity-90 transition uppercase text-sm tracking-widest">Guardar Sede</button>
+                            <button type="button" id="btn-delete-sede" class="hidden px-6 py-3 bg-red-50 text-red-600 font-bold rounded-lg border border-red-200 hover:bg-red-100 transition uppercase text-xs">Eliminar</button>
                         </div>
                     </form>
                 </div>

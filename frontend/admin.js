@@ -5,6 +5,7 @@ let adminState = {
     modo: 'create',
     selectedId: null,
     entidades: [],
+    sedes: [],
     servicios: [],
     catalogo: []
 };
@@ -65,15 +66,18 @@ async function showAdminPanel(user) {
 }
 
 async function loadData() {
-    const [eRes, sRes, cRes] = await Promise.all([
+    const [eRes, sRes, cRes, sedesRes] = await Promise.all([
         supabase.from("eapn_entidad").select("*").order("denominacion"),
         supabase.from("vista_servicios").select("*").order("servicio"),
-        supabase.from("catalogos_servicios").select("*").order("codigo")
+        supabase.from("catalogos_servicios").select("*").order("codigo"),
+        supabase.from("sedes_entidades").select("*")
     ]);
 
     adminState.entidades = eRes.data || [];
     adminState.servicios = sRes.data || [];
+    adminState.sedes = sedesRes.data || [];
     adminState.catalogo = cRes.data || [];
+    
 
     const selEnt = document.getElementById('admin-select-entidad');
     selEnt.innerHTML = '<option value="">Seleccione Entidad...</option>';
@@ -81,10 +85,14 @@ async function loadData() {
     const filterEnt = document.getElementById('admin-filter-entidad');
     filterEnt.innerHTML = '<option value="">Todas las Entidades</option>';
 
+    const selEntSede = document.getElementById('admin-select-entidad-sede');
+    selEntSede.innerHTML = '<option value="">Seleccione Entidad...</option>';
+
     adminState.entidades.forEach(e => {
         const opt = `<option value="${e.entidad_id}">${e.denominacion}</option>`;
         selEnt.innerHTML += opt;
         filterEnt.innerHTML += opt;
+        selEntSede.innerHTML += opt;
     });
 
     const selCat = document.getElementById('admin-select-catalogo');
@@ -113,8 +121,10 @@ function initAdminEvents() {
 
     document.getElementById('form-entidad').onsubmit = handleSave;
     document.getElementById('form-servicio').onsubmit = handleSave;
+    document.getElementById('form-sede').onsubmit = handleSave; // <--- NUEVO
     document.getElementById('btn-delete-entidad').onclick = () => handleDelete('entidad');
     document.getElementById('btn-delete-servicio').onclick = () => handleDelete('servicio');
+    document.getElementById('btn-delete-sede').onclick = () => handleDelete('sede'); // <--- NUEVO
 
     const toggleReso = document.getElementById('toggle-reso');
     toggleReso.onchange = (e) => {
@@ -195,15 +205,22 @@ function initResizer() {
 
 window.switchTab = (tab) => {
     adminState.activeTab = tab;
-    const isEnt = tab === 'tab-entidad';
     
-    document.getElementById('btn-tab-entidad').className = isEnt ? "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold bg-brand-red text-white transition" : "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100 transition";
-    document.getElementById('btn-tab-servicio').className = !isEnt ? "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold bg-brand-red text-white transition" : "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100 transition";
+    // Actualizar clases de botones (puedes refactorizar esto, pero siguiendo tu estilo):
+    const activeClass = "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold bg-brand-red text-white transition";
+    const inactiveClass = "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100 transition";
     
-    document.getElementById('form-entidad').classList.toggle('hidden', !isEnt);
-    document.getElementById('form-servicio').classList.toggle('hidden', isEnt);
+    document.getElementById('btn-tab-entidad').className = tab === 'tab-entidad' ? activeClass : inactiveClass;
+    document.getElementById('btn-tab-servicio').className = tab === 'tab-servicio' ? activeClass : inactiveClass;
+    document.getElementById('btn-tab-sede').className = tab === 'tab-sede' ? activeClass : inactiveClass; // <--- NUEVO
+
+    // Visibilidad de formularios
+    document.getElementById('form-entidad').classList.toggle('hidden', tab !== 'tab-entidad');
+    document.getElementById('form-servicio').classList.toggle('hidden', tab !== 'tab-servicio');
+    document.getElementById('form-sede').classList.toggle('hidden', tab !== 'tab-sede'); // <--- NUEVO
     
-    document.getElementById('filter-entidad-container').classList.toggle('hidden', isEnt);
+    // El filtro de entidad es útil tanto para servicios como para sedes
+    document.getElementById('filter-entidad-container').classList.toggle('hidden', tab === 'tab-entidad');
 
     document.getElementById('admin-filter-entidad').value = "";
     document.getElementById('admin-search').value = "";
@@ -217,11 +234,16 @@ function resetForm() {
     adminState.selectedId = null;
     document.getElementById('form-entidad').reset();
     document.getElementById('form-servicio').reset();
-    document.getElementById('form-title').textContent = adminState.activeTab === 'tab-entidad' ? 'Nueva Entidad' : 'Nuevo Servicio';
-    document.getElementById('form-mode-badge').textContent = 'Creación';
+    document.getElementById('form-sede').reset(); // <--- NUEVO
+
+    if(adminState.activeTab === 'tab-entidad') document.getElementById('form-title').textContent = 'Nueva Entidad';
+    else if(adminState.activeTab === 'tab-servicio') document.getElementById('form-title').textContent = 'Nuevo Servicio';
+    else document.getElementById('form-title').textContent = 'Nueva Sede'; // <--- NUEVO    document.getElementById('form-mode-badge').textContent = 'Creación';
+    
     document.getElementById('btn-delete-entidad').classList.add('hidden');
     document.getElementById('btn-delete-servicio').classList.add('hidden');
-    
+    document.getElementById('btn-delete-sede').classList.add('hidden'); // <--- NUEVO
+
     const toggle = document.getElementById('toggle-reso');
     toggle.checked = false;
     toggle.dispatchEvent(new Event('change'));
@@ -247,7 +269,48 @@ function renderList() {
             container.appendChild(div);
         });
 
-    } else {
+    } else if (adminState.activeTab === 'tab-sede') { // <--- NUEVA LÓGICA SEDES
+        
+        // Enriquecer sedes con nombre de entidad
+        let sedesEnriquecidas = adminState.sedes.map(s => {
+            const entidad = adminState.entidades.find(e => e.entidad_id === s.entidad_id);
+            return {
+                ...s,
+                nombre_entidad: entidad ? entidad.denominacion : 'Sin Entidad Asignada'
+            };
+        });
+
+        // Filtrar
+        sedesEnriquecidas = sedesEnriquecidas.filter(s => {
+            const matchesText = (s.direccion || '').toLowerCase().includes(search) || s.nombre_entidad.toLowerCase().includes(search);
+            const matchesEntidad = filterEntidadId === "" || String(s.entidad_id) === filterEntidadId;
+            return matchesText && matchesEntidad;
+        });
+
+        // Ordenar por entidad
+        sedesEnriquecidas.sort((a, b) => a.nombre_entidad.localeCompare(b.nombre_entidad));
+
+        let lastEntidad = null;
+        sedesEnriquecidas.forEach(item => {
+            if (item.nombre_entidad !== lastEntidad) {
+                const header = document.createElement('div');
+                header.className = "sticky top-0 bg-gray-100 z-10 px-1 py-2 text-[10px] font-black text-brand-red uppercase tracking-widest border-b border-gray-200 mt-2 mb-1 whitespace-normal break-words";
+                header.textContent = item.nombre_entidad;
+                container.appendChild(header);
+                lastEntidad = item.nombre_entidad;
+            }
+
+            const div = document.createElement('div');
+            div.className = "ml-2 p-3 bg-white border rounded-lg hover:border-brand-red cursor-pointer transition shadow-sm group flex justify-between items-center mb-1";
+            div.innerHTML = `<div class="text-xs font-medium text-gray-700 w-full">${item.direccion || 'Sin dirección'} (${item.municipio || '-'})</div><span class="material-symbols-outlined text-gray-300 group-hover:text-brand-red text-sm">edit</span>`;
+            div.onclick = () => {
+                setEditMode(item);
+                toggleMobileMenu(false);
+            };
+            container.appendChild(div);
+        });
+
+    } else  {
         let serviciosEnriquecidos = adminState.servicios.map(s => {
             const entidad = adminState.entidades.find(e => e.entidad_id === s.entidad_id);
             return {
@@ -311,6 +374,19 @@ function setEditMode(item) {
         f.latitud.value = item.latitud || '';
         f.longitud.value = item.longitud || '';
         document.getElementById('btn-delete-entidad').classList.remove('hidden');
+    } else if (adminState.activeTab === 'tab-sede') { // <--- NUEVO
+        adminState.selectedId = item.id; // La tabla sedes tiene columna 'id'
+        const f = document.getElementById('form-sede');
+        f.entidad_id.value = item.entidad_id;
+        f.direccion.value = item.direccion || '';
+        f.municipio.value = item.municipio || '';
+        f.provincia.value = item.provincia || '';
+        f.codigo_postal.value = item.codigo_postal || '';
+        f.telefono.value = item.telefono || '';
+        f.email.value = item.email || '';
+        f.latitud.value = item.latitud || '';
+        f.longitud.value = item.longitud || '';
+        document.getElementById('btn-delete-sede').classList.remove('hidden');
     } else {
         adminState.selectedId = item.servicio_id;
         const f = document.getElementById('form-servicio');
@@ -364,6 +440,15 @@ async function handleSave(e) {
             }
             if (res.error) throw res.error;
 
+        } else if (adminState.activeTab === 'tab-sede') { // <--- NUEVO
+            let res;
+            // Eliminar ID del objeto data si existe por accidente
+            if (adminState.modo === 'create') {
+                res = await supabase.from('sedes_entidades').insert([data]);
+            } else {
+                res = await supabase.from('sedes_entidades').update(data).eq('id', adminState.selectedId);
+            }
+            if (res.error) throw res.error;
         } else {
             const entidad_id_referencia = data.entidad_id; 
             const srvData = { ...data };
@@ -417,6 +502,9 @@ async function handleDelete(type) {
             await supabase.from('eapn_servicio_entidad').delete().eq('entidad_id', adminState.selectedId);
             const { error } = await supabase.from('eapn_entidad').delete().eq('entidad_id', adminState.selectedId);
             if (error) throw error;
+        } else if (type === 'sede') { // <--- NUEVO
+             const { error } = await supabase.from('sedes_entidades').delete().eq('id', adminState.selectedId);
+             if (error) throw error;
         } else {
             await supabase.from('eapn_servicio_entidad').delete().eq('servicio_id', adminState.selectedId);
             const { error } = await supabase.from('eapn_servicio').delete().eq('servicio_id', adminState.selectedId);

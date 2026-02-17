@@ -33,6 +33,7 @@ if (document.getElementById('map')) {
     } else {
         let estado = {
             entidades: [],
+            sedes: [],
             servicios: [],
             catalogoCompleto: [],
             entidadSeleccionada: null,
@@ -110,11 +111,13 @@ if (document.getElementById('map')) {
             const { data: ent } = await supabase.from("eapn_entidad").select("*").order("denominacion");
             const { data: srv } = await supabase.from("vista_servicios").select("*").order("servicio");
             const { data: cat } = await supabase.from("catalogos_servicios").select("*").order("codigo");
+            const { data: sds } = await supabase.from("sedes_entidades").select("*"); // <--- Petición de sedes
 
             estado.entidades = ent || [];
             estado.servicios = srv || [];
             estado.catalogoCompleto = cat || [];
-
+            estado.sedes = sds || []; // <--- Guardado de sedes. ¡Sin esto, sigue undefined!
+            
             renderFiltros();
             render();
         };
@@ -187,30 +190,64 @@ if (document.getElementById('map')) {
             actualizarPaginacionUI('ent', entFiltradas.length, estado.paginacionEntidades);
             actualizarPaginacionUI('srv', srvFiltrados.length, estado.paginacionServicios);
 
+            // Limpiamos los marcadores antiguos
             markersGroup.clearLayers();
-            entFiltradas.forEach(ent => {
-                if (!ent.latitud || !ent.longitud) return;
 
-                const marker = L.marker([ent.latitud, ent.longitud], { 
-                    icon: L.divIcon({ 
-                        // Usamos un contenedor que incluya la imagen del logo
-                        html: `
-                            <div class="custom-pin">
-                                <img src="${ent.logo_url}" class="pin-logo">
-                                <span class="material-symbols-outlined pin-icon">location_on</span>
-                            </div>`, 
-                        className: '', 
-                        iconSize: [50, 50], 
-                        iconAnchor: [25, 50] 
-                    }) 
-                });
+            entFiltradas.forEach(ent => {
+                const susSedes = (estado.sedes || []).filter(s => s.entidad_id === ent.entidad_id);
                 
-                marker.on('click', () => { 
-                    estado.entidadSeleccionada = ent;
-                    window.openModalEntidad(ent); // Abre la info directamente al tocar
-                });
+                // 1. Recuperamos el color corporativo (o fallback a rojo EAPN)
+                const color = ent.color_corporativo || '#7C3844';
                 
-                markersGroup.addLayer(marker);
+                // 2. Definimos el estilo del contenedor pasando la variable CSS
+                const styleVar = `--pin-color: ${color};`;
+
+                // Función auxiliar para crear el marcador
+                const crearMarcador = (lat, lng, item, clickCallback) => {
+                    if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return;
+
+                    const marker = L.marker([lat, lng], { 
+                        icon: L.divIcon({ 
+                            html: `
+                                <div class="custom-pin" style="${styleVar}">
+                                    <img src="${ent.logo_url}" class="pin-logo">
+                                    </div>`, 
+                            className: '', // Dejamos esto vacío para que Leaflet no meta estilos extraños
+                            
+                            // IMPORTANTE: Ajustamos el tamaño y el ancla
+                            iconSize: [64, 80],   // Ancho 64, Alto 80 (círculo + pico)
+                            iconAnchor: [32, 80], // [Mitad del ancho, Altura total] -> Esto hace que la punta toque la coordenada exacta
+                            popupAnchor: [0, -70] // Si usaras popups, que salgan encima de la cabeza
+                        }) 
+                    });
+                    
+                    marker.on('click', clickCallback);
+                    markersGroup.addLayer(marker);
+                };
+
+                // --- ESCENARIO A: TIENE SEDES ---
+                if (susSedes.length > 0) {
+                    susSedes.forEach(sede => {
+                        crearMarcador(
+                            parseFloat(sede.latitud), 
+                            parseFloat(sede.longitud), 
+                            sede, 
+                            () => window.openModalSede(sede, ent)
+                        );
+                    });
+                } 
+                // --- ESCENARIO B: NO TIENE SEDES ---
+                else {
+                    crearMarcador(
+                        parseFloat(ent.latitud), 
+                        parseFloat(ent.longitud), 
+                        ent, 
+                        () => {
+                            estado.entidadSeleccionada = ent;
+                            window.openModalEntidad(ent);
+                        }
+                    );
+                }
             });
         };
 
@@ -222,18 +259,108 @@ if (document.getElementById('map')) {
         };
 
         const renderEntidadCard = (ent) => {
-            const div = document.createElement('div');
-            const isSel = estado.entidadSeleccionada?.entidad_id === ent.entidad_id;
-            div.className = `p-3 border-b hover:bg-red-50 cursor-pointer flex items-center gap-3 transition-all ${isSel ? 'bg-red-50 border-l-4 border-brand-red' : ''}`;
-            div.innerHTML = `<img src="${ent.logo_url}" class="w-10 h-10 object-contain border rounded-full bg-white"><h3 class="font-semibold text-xs truncate flex-1">${ent.denominacion}</h3><span class="material-symbols-outlined text-gray-300 text-sm">chevron_right</span>`;
-            
-            div.onclick = () => { 
-                estado.entidadSeleccionada = ent;  
+            // 1. Buscamos si esta entidad tiene sedes
+            const susSedes = estado.sedes.filter(s => s.entidad_id === ent.entidad_id);
+            const tieneSedes = susSedes.length > 0;
 
-                render(); 
-                window.openModalEntidad(ent);
+            // Contenedor principal
+            const container = document.createElement('div');
+            container.className = "border-b transition-all bg-white";
+
+            // --- PARTE 1: LA CABECERA (La Entidad) ---
+            const header = document.createElement('div');
+            const isSel = estado.entidadSeleccionada?.entidad_id === ent.entidad_id;
+            
+            // Estilos dinámicos: si tiene sedes, el cursor indica que es desplegable
+            header.className = `p-3 cursor-pointer flex items-center gap-3 hover:bg-red-50 transition-colors relative z-10 
+                ${isSel ? 'bg-red-50 border-l-4 border-brand-red' : 'border-l-4 border-transparent'}`;
+
+            // Icono de la derecha: Chevron si hay sedes (para desplegar), Flecha si es directo
+            const iconoSufijo = tieneSedes ? 'expand_more' : 'chevron_right';
+            
+            header.innerHTML = `
+                <img src="${ent.logo_url}" class="w-10 h-10 object-contain border rounded-full bg-white shrink-0">
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-xs truncate leading-tight">${ent.denominacion}</h3>
+                    ${tieneSedes 
+                        ? `<span class="text-[9px] text-gray-400 font-bold bg-gray-100 px-1.5 rounded-full mt-1 inline-block">${susSedes.length} sedes</span>` 
+                        : ''}
+                </div>
+                <span id="icon-${ent.entidad_id}" class="material-symbols-outlined text-gray-300 text-sm transition-transform duration-200">${iconoSufijo}</span>
+            `;
+
+            // --- PARTE 2: EL CUERPO (La lista de sedes, oculta por defecto) ---
+            let body = null;
+            if (tieneSedes) {
+                body = document.createElement('div');
+                body.id = `sedes-list-${ent.entidad_id}`;
+                body.className = "hidden bg-gray-50 border-t border-gray-100"; // Oculto por defecto
+
+                susSedes.forEach(sede => {
+                    const row = document.createElement('div');
+                    row.className = "pl-[3.25rem] pr-3 py-2 text-xs text-gray-600 hover:bg-gray-200 hover:text-brand-red cursor-pointer border-b border-gray-100 last:border-0 flex items-center justify-between group transition-colors";
+                    
+                    // Texto: Municipio (si existe) o Dirección recortada
+                    const textoSede = sede.municipio ? sede.municipio : sede.direccion.substring(0, 25) + '...';
+                    
+                    row.innerHTML = `
+                        <span class="truncate font-medium">${textoSede}</span>
+                        <span class="material-symbols-outlined text-[10px] text-gray-300 group-hover:text-brand-red">store</span>
+                    `;
+
+                    // Click en una SEDE específica
+                    row.onclick = (e) => {
+                        e.stopPropagation(); // Evitar que el click suba al padre
+                        
+                        // Centrar mapa en la sede
+                        if(map && sede.latitud && sede.longitud) {
+                            map.setView([sede.latitud, sede.longitud], 16);
+                        }
+                        
+                        // Abrir modal de sede (usando la función que creamos antes)
+                        window.openModalSede(sede, ent);
+                    };
+                    body.appendChild(row);
+                });
+            }
+
+            // --- LOGICA DEL CLICK EN LA CABECERA ---
+            header.onclick = () => {
+                if (tieneSedes) {
+                    // COMPORTAMIENTO ACORDEÓN
+                    const list = body;
+                    const icon = header.querySelector(`#icon-${ent.entidad_id}`);
+                    
+                    if (list.classList.contains('hidden')) {
+                        // Abrir
+                        list.classList.remove('hidden');
+                        icon.style.transform = 'rotate(180deg)';
+                        header.classList.add('bg-gray-50'); // Mantener gris al abrir
+                    } else {
+                        // Cerrar
+                        list.classList.add('hidden');
+                        icon.style.transform = 'rotate(0deg)';
+                        header.classList.remove('bg-gray-50');
+                    }
+                } else {
+                    // COMPORTAMIENTO CLÁSICO (Sin sedes)
+                    estado.entidadSeleccionada = ent;
+                    
+                    // Centrar mapa si tiene coords
+                    if(map && ent.latitud && ent.longitud) {
+                        map.setView([ent.latitud, ent.longitud], 14);
+                    }
+                    
+                    // Actualizar UI para marcar seleccionado (opcional, redibujaría todo)
+                    // render(); 
+                    window.openModalEntidad(ent);
+                }
             };
-            return div;
+
+            container.appendChild(header);
+            if (body) container.appendChild(body);
+
+            return container;
         };
 
         const renderServicioCard = (serv) => {
@@ -445,3 +572,80 @@ if (document.getElementById('map')) {
         window.onload = init;
     }
 }
+
+window.openModalSede = (sede, ent) => {
+    // 1. Cabecera de la modal (Usamos datos de la entidad padre para imagen y título)
+    document.getElementById('modal-img').src = ent.logo_url;
+    document.getElementById('modal-title').textContent = ent.denominacion;
+
+    // 2. Subtítulo distintivo
+    const nombreSede = sede.municipio ? `SEDE ${sede.municipio.toUpperCase()}` : 'DELEGACIÓN';
+    document.getElementById('modal-subtitle').innerHTML = `
+        <span class="px-2 py-0.5 rounded bg-orange-100 text-orange-800 text-[9px] font-bold border border-orange-200">
+            <span class="material-symbols-outlined text-[10px] align-middle">store</span> ${nombreSede}
+        </span>`;
+    
+    // 3. Cuerpo de la modal con los datos específicos de la SEDE
+    document.getElementById('modal-body').innerHTML = `
+        <div class="space-y-3">
+            <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <span class="material-symbols-outlined text-brand-red mt-0.5">place</span>
+                <div>
+                    <div class="text-[10px] text-gray-400 uppercase font-bold">Dirección</div>
+                    <div class="text-sm font-bold text-gray-800">${sede.direccion || 'Dirección no disponible'}</div>
+                    <div class="text-xs text-gray-500 mt-0.5">
+                        ${sede.codigo_postal || ''} ${sede.municipio || ''} ${sede.provincia ? `(${sede.provincia})` : ''}
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <span class="material-symbols-outlined text-blue-500 mt-0.5">call</span>
+                <div>
+                    <div class="text-[10px] text-gray-400 uppercase font-bold">Teléfono</div>
+                    <div class="text-sm font-medium">
+                        ${sede.telefono || ent.telefono || '<span class="italic text-gray-400">No disponible</span>'}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <span class="material-symbols-outlined text-yellow-600 mt-0.5">mail</span>
+                <div class="min-w-0 flex-1"> <div class="text-[10px] text-gray-400 uppercase font-bold">Email</div>
+                    <div class="text-sm font-medium truncate">
+                        ${sede.email || ent.email || '<span class="italic text-gray-400">No disponible</span>'}
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-2 text-[10px] text-center text-gray-400">
+                Esta ubicación forma parte de la red de <span class="font-bold text-gray-500">${ent.denominacion}</span>
+            </div>
+        </div>`;
+
+    // 4. Configurar botones del pie
+    
+    // Botón Web: Usa siempre la web de la entidad principal
+    let boton_acceso_web = document.getElementById('modal-btn-web');
+    if (!ent.web) {
+        boton_acceso_web.classList.add("hidden");
+    } else {
+        boton_acceso_web.classList.remove("hidden");
+        boton_acceso_web.onclick = () => window.open(ent.web);
+    }
+    
+    // Botón "Ir ahora": Usa las coordenadas de la SEDE
+    const btnLlegar = document.getElementById('modal-btn-llegar');
+    if (sede.latitud && sede.longitud) {
+        btnLlegar.classList.remove('opacity-50', 'pointer-events-none');
+        btnLlegar.onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${sede.latitud},${sede.longitud}`);
+        btnLlegar.innerHTML = `<span class="material-symbols-outlined text-[18px]">near_me</span> <span class="font-bold">Cómo llegar</span>`;
+    } else {
+        // Si la sede no tiene coordenadas, deshabilitamos el botón visualmente
+        btnLlegar.classList.add('opacity-50', 'pointer-events-none');
+        btnLlegar.innerHTML = `<span class="material-symbols-outlined text-[18px]">location_disabled</span> <span class="font-bold">Sin ubicación</span>`;
+    }
+
+    // 5. Mostrar la modal
+    document.getElementById('modal-overlay').classList.remove('hidden');
+};
