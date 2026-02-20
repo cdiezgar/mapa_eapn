@@ -236,18 +236,6 @@ if (document.getElementById('map')) {
                         );
                     });
                 } 
-                // --- ESCENARIO B: NO TIENE SEDES ---
-                else {
-                    crearMarcador(
-                        parseFloat(ent.latitud), 
-                        parseFloat(ent.longitud), 
-                        ent, 
-                        () => {
-                            estado.entidadSeleccionada = ent;
-                            window.openModalEntidad(ent);
-                        }
-                    );
-                }
             });
         };
 
@@ -481,41 +469,34 @@ if (document.getElementById('map')) {
         window.cerrarModalCatalogo = () => document.getElementById('modal-catalogo-overlay').classList.add('hidden');
         
         window.openModalEntidad = (e) => {
-            let web = e.web;
-            document.getElementById('modal-img').src = e.logo_url;
+            document.getElementById('modal-img').src = e.logo_url || '';
             document.getElementById('modal-title').textContent = e.denominacion;
             document.getElementById('modal-subtitle').innerHTML = `<span class="px-2 py-0.5 rounded bg-gray-200 text-gray-600 text-[9px]">ENTIDAD SOCIAL</span>`;
             
+            // Mostrar el mensaje centrado de que no hay sedes
             document.getElementById('modal-body').innerHTML = `
-                <div class="space-y-3">
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span class="material-symbols-outlined text-brand-red mt-0.5">location_on</span>
-                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Dirección</div><div class="text-sm font-medium">${e.direccion || 'No especificada'}</div></div>
-                    </div>
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span class="material-symbols-outlined text-blue-500 mt-0.5">call</span>
-                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Teléfono</div><div class="text-sm font-medium">${e.telefono || 'No disponible'}</div></div>
-                    </div>
-                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span class="material-symbols-outlined text-yellow-600 mt-0.5">mail</span>
-                        <div><div class="text-[10px] text-gray-400 uppercase font-bold">Email</div><div class="text-sm font-medium">${e.email || 'No disponible'}</div></div>
-                    </div>
+                <div class="flex flex-col items-center justify-center py-12 text-center space-y-3 opacity-70">
+                    <span class="material-symbols-outlined text-5xl text-gray-400">domain_disabled</span>
+                    <p class="text-gray-600 text-sm font-medium">Esta entidad no tiene sedes disponibles, <br>disculpe las molestias.</p>
                 </div>`;
 
-            let boton_acceso_web = document.getElementById('modal-btn-web');
+            // Obtener botones y la barra inferior (footer)
+            const btnWeb = document.getElementById('modal-btn-web');
+            const btnLlegar = document.getElementById('modal-btn-llegar');
+            const footer = btnLlegar.parentElement;
 
-            if (web == null) {
-                boton_acceso_web.classList.add("hidden")
-            } else {
-                boton_acceso_web.classList.remove("hidden")
-                boton_acceso_web.onclick = () => window.open(web);
-            }
+            // Ocultar todo
+            btnWeb.classList.add("hidden");
+            btnLlegar.classList.add("hidden");
+            footer.classList.add("hidden"); 
             
-            document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${e.latitud},${e.longitud}`);
             document.getElementById('modal-overlay').classList.remove('hidden');
         };
 
         window.openModalServicio = (s) => {
+            document.getElementById('modal-btn-llegar').parentElement.classList.remove('hidden');
+            document.getElementById('modal-btn-llegar').classList.remove('hidden');
+
             const conf = CONFIG_SECTORES[s.sector] || { color: "#666", icon: 'help' };
             document.getElementById('modal-img').src = s.entidad_logo;
             document.getElementById('modal-title').textContent = s.servicio;
@@ -564,7 +545,15 @@ if (document.getElementById('map')) {
                         </div>
                     </div>
                 </div>`;
-            document.getElementById('modal-btn-llegar').onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${s.latitud},${s.longitud}`);
+            const btnLlegar = document.getElementById('modal-btn-llegar');
+            if (s.latitud && s.longitud) {
+                btnLlegar.classList.remove('opacity-50', 'pointer-events-none');
+                btnLlegar.onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=$${s.latitud},${s.longitud}`);
+                btnLlegar.innerHTML = `<span class="material-symbols-outlined text-[18px]">near_me</span> <span class="font-bold">Ir ahora</span>`;
+            } else {
+                btnLlegar.classList.add('opacity-50', 'pointer-events-none');
+                btnLlegar.innerHTML = `<span class="material-symbols-outlined text-[18px]">location_disabled</span> <span class="font-bold">Sin ubicación</span>`;
+            }
             document.getElementById('modal-overlay').classList.remove('hidden');
             document.getElementById('modal-btn-web').classList.add('hidden');
         };
@@ -574,6 +563,9 @@ if (document.getElementById('map')) {
 }
 
 window.openModalSede = (sede, ent) => {
+    document.getElementById('modal-btn-llegar').parentElement.classList.remove('hidden');
+    document.getElementById('modal-btn-llegar').classList.remove('hidden');
+
     // 1. Cabecera de la modal (Usamos datos de la entidad padre para imagen y título)
     document.getElementById('modal-img').src = ent.logo_url;
     document.getElementById('modal-title').textContent = ent.denominacion;
@@ -604,7 +596,7 @@ window.openModalSede = (sede, ent) => {
                 <div>
                     <div class="text-[10px] text-gray-400 uppercase font-bold">Teléfono</div>
                     <div class="text-sm font-medium">
-                        ${sede.telefono || ent.telefono || '<span class="italic text-gray-400">No disponible</span>'}
+                        ${sede.telefono || '<span class="italic text-gray-400">No disponible</span>'}
                     </div>
                 </div>
             </div>
@@ -613,7 +605,7 @@ window.openModalSede = (sede, ent) => {
                 <span class="material-symbols-outlined text-yellow-600 mt-0.5">mail</span>
                 <div class="min-w-0 flex-1"> <div class="text-[10px] text-gray-400 uppercase font-bold">Email</div>
                     <div class="text-sm font-medium truncate">
-                        ${sede.email || ent.email || '<span class="italic text-gray-400">No disponible</span>'}
+                        ${sede.email || '<span class="italic text-gray-400">No disponible</span>'}
                     </div>
                 </div>
             </div>

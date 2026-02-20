@@ -153,28 +153,18 @@
 
                     <!-- Formulario Entidad -->
                     <form id="form-entidad" class="space-y-6 animate-fade">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                            <div class="md:col-span-2"><label class="filter-label">Nombre de la Entidad *</label><input type="text" name="denominacion" required class="w-full border rounded-lg p-3 text-sm bg-gray-50"></div>
-                            <div class="md:col-span-2"><label class="filter-label">Dirección / Sede Central *</label><input type="text" name="direccion" required class="w-full border rounded-lg p-3 text-sm bg-gray-50"></div>
-                            <div><label class="filter-label">Teléfono</label><input type="text" name="telefono" class="w-full border rounded-lg p-3 text-sm"></div>
-                            <div><label class="filter-label">Email Principal</label><input type="email" name="email" class="w-full border rounded-lg p-3 text-sm"></div>
-                            <div class="md:col-span-2">
+                        <div class="grid grid-cols-1 gap-4 md:gap-6">
+                            <div>
+                                <label class="filter-label">Nombre de la Entidad *</label>
+                                <input type="text" name="denominacion" required class="w-full border rounded-lg p-3 text-sm bg-gray-50">
+                            </div>
+                            <div>
                                 <label class="filter-label">Sitio Web</label>
                                 <input type="url" name="web" placeholder="https://www.entidad.org" class="w-full border rounded-lg p-3 text-sm">
                             </div>
-                            <div class="md:col-span-2"><label class="filter-label">URL del Logo</label><input type="url" name="logo_url" placeholder="https://..." class="w-full border rounded-lg p-3 text-sm"></div>
-                            
-                            <div class="md:col-span-2 bg-gray-50 p-6 rounded-xl border border-dashed border-gray-300">
-                                <div class="flex justify-between items-center mb-4">
-                                    <label class="filter-label !mb-0">Coordenadas Geográficas</label>
-                                    <button type="button" onclick="openMapPicker('entidad')" class="text-[10px] font-black text-brand-red flex items-center gap-1 hover:underline uppercase tracking-tighter">
-                                        <span class="material-symbols-outlined text-sm">map</span> Seleccionar en Mapa
-                                    </button>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <input type="number" step="any" name="latitud" id="entidad-lat" placeholder="Latitud" class="w-full border rounded-lg p-3 text-sm bg-white">
-                                    <input type="number" step="any" name="longitud" id="entidad-lng" placeholder="Longitud" class="w-full border rounded-lg p-3 text-sm bg-white">
-                                </div>
+                            <div>
+                                <label class="filter-label">URL del Logo</label>
+                                <input type="url" name="logo_url" placeholder="https://..." class="w-full border rounded-lg p-3 text-sm">
                             </div>
                         </div>
                         <div class="flex flex-col md:flex-row gap-4 pt-6 border-t">

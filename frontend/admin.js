@@ -287,27 +287,46 @@ function renderList() {
             return matchesText && matchesEntidad;
         });
 
-        // Ordenar por entidad
-        sedesEnriquecidas.sort((a, b) => a.nombre_entidad.localeCompare(b.nombre_entidad));
+        sedesEnriquecidas.sort((a, b) => {
+            // 1. Primero agrupamos por el nombre de la entidad
+            if (a.nombre_entidad < b.nombre_entidad) return -1;
+            if (a.nombre_entidad > b.nombre_entidad) return 1;
+            
+            // 2. Si son de la misma entidad, ordenamos alfabéticamente por la dirección
+            const dirA = a.direccion || '';
+            const dirB = b.direccion || '';
+            return dirA.localeCompare(dirB);
+        });
 
         let lastEntidad = null;
+        let groupContainer = null; // NUEVO: Contenedor agrupador
+
         sedesEnriquecidas.forEach(item => {
             if (item.nombre_entidad !== lastEntidad) {
+                // 1. Creamos la caja "padre" para agrupar esta entidad
+                groupContainer = document.createElement('div');
+                groupContainer.className = "relative pb-3"; // pb-3 da espacio entre entidades
+                container.appendChild(groupContainer);
+
+                // 2. Metemos el encabezado sticky DENTRO del grupo
                 const header = document.createElement('div');
-                header.className = "sticky top-0 bg-gray-100 z-10 px-1 py-2 text-[10px] font-black text-brand-red uppercase tracking-widest border-b border-gray-200 mt-2 mb-1 whitespace-normal break-words";
+                header.className = "sticky top-0 bg-gray-100 z-10 px-2 py-2 text-[10px] font-black text-brand-red uppercase tracking-widest border-b border-gray-200 shadow-sm whitespace-normal break-words";
                 header.textContent = item.nombre_entidad;
-                container.appendChild(header);
+                groupContainer.appendChild(header);
+                
                 lastEntidad = item.nombre_entidad;
             }
 
+            // 3. Metemos las tarjetas DENTRO del grupo, no sueltas
             const div = document.createElement('div');
-            div.className = "ml-2 p-3 bg-white border rounded-lg hover:border-brand-red cursor-pointer transition shadow-sm group flex justify-between items-center mb-1";
+            div.className = "ml-2 mt-1 p-3 bg-white border rounded-lg hover:border-brand-red cursor-pointer transition shadow-sm group flex justify-between items-center";
             div.innerHTML = `<div class="text-xs font-medium text-gray-700 w-full">${item.direccion || 'Sin dirección'} (${item.municipio || '-'})</div><span class="material-symbols-outlined text-gray-300 group-hover:text-brand-red text-sm">edit</span>`;
             div.onclick = () => {
                 setEditMode(item);
                 toggleMobileMenu(false);
             };
-            container.appendChild(div);
+            
+            groupContainer.appendChild(div); // <--- IMPORTANTE
         });
 
     } else  {
@@ -332,26 +351,35 @@ function renderList() {
         });
 
         let lastEntidad = null;
+        let groupContainer = null; // NUEVO: Contenedor agrupador
 
         serviciosEnriquecidos.forEach(item => {
             if (item.nombre_entidad !== lastEntidad) {
+                // 1. Creamos la caja "padre"
+                groupContainer = document.createElement('div');
+                groupContainer.className = "relative pb-3";
+                container.appendChild(groupContainer);
+
+                // 2. Metemos el encabezado sticky
                 const header = document.createElement('div');
-                header.className = "sticky top-0 bg-gray-100 z-10 px-1 py-2 text-[10px] font-black text-brand-red uppercase tracking-widest border-b border-gray-200 mt-2 mb-1 whitespace-normal break-words";
+                header.className = "sticky top-0 bg-gray-100 z-10 px-2 py-2 text-[10px] font-black text-brand-red uppercase tracking-widest border-b border-gray-200 shadow-sm whitespace-normal break-words";
                 header.textContent = item.nombre_entidad;
-                container.appendChild(header);
+                groupContainer.appendChild(header);
+                
                 lastEntidad = item.nombre_entidad;
             }
 
+            // 3. Metemos la tarjeta
             const div = document.createElement('div');
-            div.className = "ml-2 p-3 bg-white border rounded-lg hover:border-brand-red cursor-pointer transition shadow-sm group flex justify-between items-center mb-1";
+            div.className = "ml-2 mt-1 p-3 bg-white border rounded-lg hover:border-brand-red cursor-pointer transition shadow-sm group flex justify-between items-center";
             div.innerHTML = `<div class="text-xs font-medium text-gray-700 w-full">${item.servicio}</div><span class="material-symbols-outlined text-gray-300 group-hover:text-brand-red text-sm">edit</span>`;
             div.onclick = () => {
                 setEditMode(item);
-                toggleMobileMenu(false); // Cerrar menú en móvil al seleccionar
+                toggleMobileMenu(false);
             };
-            container.appendChild(div);
-        });
-        
+            
+            groupContainer.appendChild(div); // <--- IMPORTANTE
+        }); 
         if (serviciosEnriquecidos.length === 0) {
             container.innerHTML = '<div class="text-center text-xs text-gray-400 mt-4">No se encontraron servicios.</div>';
         }
@@ -366,13 +394,8 @@ function setEditMode(item) {
         adminState.selectedId = item.entidad_id;
         const f = document.getElementById('form-entidad');
         f.denominacion.value = item.denominacion;
-        f.direccion.value = item.direccion;
-        f.telefono.value = item.telefono || '';
-        f.email.value = item.email || '';
         f.web.value = item.web || '';
         f.logo_url.value = item.logo_url || '';
-        f.latitud.value = item.latitud || '';
-        f.longitud.value = item.longitud || '';
         document.getElementById('btn-delete-entidad').classList.remove('hidden');
     } else if (adminState.activeTab === 'tab-sede') { // <--- NUEVO
         adminState.selectedId = item.id; // La tabla sedes tiene columna 'id'
@@ -424,12 +447,22 @@ async function handleSave(e) {
         }
     }
     
-    if (data.latitud === "" || data.latitud === undefined) data.latitud = null;
-    else data.latitud = parseFloat(data.latitud);
+// Solo formateamos latitud y longitud si NO estamos en entidades
+    if (adminState.activeTab !== 'tab-entidad') {
+        if (data.latitud === "" || data.latitud === undefined) data.latitud = null;
+        else data.latitud = parseFloat(data.latitud);
+        
+        if (data.longitud === "" || data.longitud === undefined) data.longitud = null;
+        else data.longitud = parseFloat(data.longitud);
+    } else {
+        // Por seguridad, si se colaran en el objeto data, las eliminamos antes de enviar a Supabase
+        delete data.latitud;
+        delete data.longitud;
+        delete data.direccion;
+        delete data.telefono;
+        delete data.email;
+    }
     
-    if (data.longitud === "" || data.longitud === undefined) data.longitud = null;
-    else data.longitud = parseFloat(data.longitud);
-
     try {
         if (adminState.activeTab === 'tab-entidad') {
             let res;
