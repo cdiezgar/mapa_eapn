@@ -38,13 +38,14 @@ if (document.getElementById('map')) {
             catalogoCompleto: [],
             entidadSeleccionada: null,
             filtros: { texto: "", entidad: "", sector: "", provincia: "", catalogosSeleccionados: [] },
+            modoMapa: 'entidades', // <--- NUEVO ESTADO PARA EL TOGGLE
             paginacionEntidades: { paginaActual: 1, itemsPorPagina: 20 },
             paginacionServicios: { paginaActual: 1, itemsPorPagina: 20 }
         };
 
         let map;
         let markersGroup = L.markerClusterGroup({
-            showCoverageOnHover: false, zoomToBoundsOnClick: true, spiderfyOnMaxZoom: true, maxClusterRadius: 50
+            showCoverageOnHover: false, zoomToBoundsOnClick: true, spiderfyOnMaxZoom: true, maxClusterRadius: 50,spiderfyDistanceMultiplier: 2.5 
         });
 
         const init = async () => {
@@ -179,7 +180,7 @@ if (document.getElementById('map')) {
         const render = () => {
             // 1. Identificamos qué sedes cumplen con el filtro de provincia
             const sedesValidasPorProvincia = estado.filtros.provincia 
-                ? estado.sedes.filter(s => String(s.provincia_id) === estado.filtros.provincia)
+                ? estado.sedes.filter(s => String(s.cod_provincia) === estado.filtros.provincia)
                 : estado.sedes;
             
             // Creamos un set con los IDs de las entidades que SÍ tienen presencia en la provincia seleccionada
@@ -216,60 +217,215 @@ if (document.getElementById('map')) {
             // Limpiamos los marcadores antiguos
             markersGroup.clearLayers();
 
-            entFiltradas.forEach(ent => {
-                // Modificado: Ahora filtra las sedes respetando la provincia seleccionada
-                const susSedes = estado.sedes.filter(s => {
-                    if (s.entidad_id !== ent.entidad_id) return false;
-                    if (estado.filtros.provincia && String(s.provincia_id) !== estado.filtros.provincia) return false;
-                    return true;
-                });
-                
-                // 1. Recuperamos el color corporativo (o fallback a rojo EAPN)
-                const color = ent.color_corporativo || '#7C3844';
-                
-                // 2. Definimos el estilo del contenedor pasando la variable CSS
-                const styleVar = `--pin-color: ${color};`;
+            // 1. Averiguar qué toggle está seleccionado directamente del HTML
+            const radioSeleccionado = document.querySelector('input[name="mapLayer"]:checked');
+            const modoMapa = radioSeleccionado ? radioSeleccionado.value : 'entidades';
 
-                // Función auxiliar para crear el marcador
-                const crearMarcador = (lat, lng, item, clickCallback) => {
-                    if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return;
+            // 2. Mostrar/Ocultar paneles laterales inteligentemente (Solo Desktop)
+            const panelEnt = document.getElementById('panel-entidades');
+            const panelSrv = document.getElementById('panel-servicios');
+            const panelMap = document.getElementById('panel-mapa');
 
-                    const marker = L.marker([lat, lng], { 
-                        icon: L.divIcon({ 
-                            html: `
-                                <div class="custom-pin" style="${styleVar}">
-                                    <img src="${ent.logo_url}" class="pin-logo">
-                                    </div>`, 
-                            className: '', // Dejamos esto vacío para que Leaflet no meta estilos extraños
-                            
-                            // IMPORTANTE: Ajustamos el tamaño y el ancla
-                            iconSize: [64, 80],   // Ancho 64, Alto 80 (círculo + pico)
-                            iconAnchor: [32, 80], // [Mitad del ancho, Altura total] -> Esto hace que la punta toque la coordenada exacta
-                            popupAnchor: [0, -70] // Si usaras popups, que salgan encima de la cabeza
-                        }) 
+            if (panelEnt && panelSrv && panelMap) {
+                if (modoMapa === 'entidades') {
+                    panelSrv.classList.remove('lg:flex');
+                    panelSrv.classList.add('lg:hidden');
+                    panelEnt.classList.remove('lg:hidden');
+                    panelEnt.classList.add('lg:flex');
+                } else {
+                    panelEnt.classList.remove('lg:flex');
+                    panelEnt.classList.add('lg:hidden');
+                    panelSrv.classList.remove('lg:hidden');
+                    panelSrv.classList.add('lg:flex');
+                }
+                // Hacemos que el mapa se expanda para ocupar el hueco libre (de 2 columnas a 3)
+                panelMap.classList.remove('lg:col-span-2');
+                panelMap.classList.add('lg:col-span-3');
+                
+                // Le decimos a Leaflet que recalcule su tamaño tras la animación
+                setTimeout(() => { if (map) map.invalidateSize(); }, 150);
+            }
+
+            // 3. PINTAR SEDES (Solo si está seleccionado "entidades")
+            if (modoMapa === 'entidades') {
+                entFiltradas.forEach(ent => {
+                    const susSedes = estado.sedes.filter(s => {
+                        if (s.entidad_id !== ent.entidad_id) return false;
+                        if (estado.filtros.provincia && String(s.cod_provincia) !== estado.filtros.provincia) return false;
+                        return true;
                     });
                     
-                    marker.on('click', clickCallback);
-                    markersGroup.addLayer(marker);
-                };
+                    const color = ent.color_corporativo || '#7C3844';
+                    const styleVar = `--pin-color: ${color};`;
 
-                // --- ESCENARIO A: TIENE SEDES ---
-                if (susSedes.length > 0) {
-                    susSedes.forEach(sede => {
-                        crearMarcador(
-                            parseFloat(sede.latitud), 
-                            parseFloat(sede.longitud), 
-                            sede,
-                            () => {
-                                // Buscamos el nombre de la provincia antes de abrir la modal
+                    const crearMarcador = (lat, lng, item, clickCallback) => {
+                        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return;
+                        const marker = L.marker([lat, lng], { 
+                            icon: L.divIcon({ 
+                                html: `
+                                    <div class="custom-pin" style="${styleVar}">
+                                        <img src="${ent.logo_url}" class="pin-logo">
+                                    </div>`, 
+                                className: '',
+                                iconSize: [64, 80],   
+                                iconAnchor: [32, 80], 
+                                popupAnchor: [0, -70] 
+                            }) 
+                        });
+                        marker.on('click', clickCallback);
+                        markersGroup.addLayer(marker);
+                    };
+
+                    if (susSedes.length > 0) {
+                        susSedes.forEach(sede => {
+                            crearMarcador(parseFloat(sede.latitud), parseFloat(sede.longitud), sede, () => {
                                 const provObj = estado.provincias.find(p => p.cod_provincia === sede.cod_provincia);
                                 sede.nombre_provincia = provObj ? provObj.provincia : '';
                                 window.openModalSede(sede, ent);
-                            }
-                        );
+                            });
+                        });
+                    } 
+                });
+            }
+
+            // 4. PINTAR SERVICIOS (Solo si está seleccionado "servicios")
+            if (modoMapa === 'servicios') {
+                srvFiltrados.forEach(srv => {
+                    if (srv.latitud && srv.longitud && !isNaN(srv.latitud) && !isNaN(srv.longitud) && srv.latitud !== 0) {
+                        const conf = CONFIG_SECTORES[srv.sector] || { color: "#666", icon: "circle" };
+                        const marker = L.marker([parseFloat(srv.latitud), parseFloat(srv.longitud)], {
+                            icon: L.divIcon({
+                                html: `
+                                    <div class="custom-pin" style="--pin-color: ${conf.color};">
+                                        <div class="pin-logo" style="display: flex; align-items: center; justify-content: center; color: ${conf.color}; background-color: white;">
+                                            <span class="material-symbols-outlined" style="font-size: 34px; font-variation-settings: 'FILL' 1;">${conf.icon}</span>
+                                        </div>
+                                    </div>`,
+                                className: '', 
+                                iconSize: [64, 80],
+                                iconAnchor: [32, 80],
+                                popupAnchor: [0, -70]
+                            })
+                        });
+
+                        marker.on('click', () => window.openModalServicio(srv));
+                        markersGroup.addLayer(marker);
+                    }
+                });
+            }
+
+            // --- NUEVO: PINTAR MARCADORES DE SERVICIOS ---
+            srvFiltrados.forEach(srv => {
+                // Solo pintamos si el servicio tiene coordenadas propias válidas
+                if (srv.latitud && srv.longitud && !isNaN(srv.latitud) && !isNaN(srv.longitud) && srv.latitud !== 0) {
+                    
+                    // Recuperamos la configuración del sector (color e icono)
+                    const conf = CONFIG_SECTORES[srv.sector] || { color: "#666", icon: "circle" };
+                    
+                    const marker = L.marker([parseFloat(srv.latitud), parseFloat(srv.longitud)], {
+                        icon: L.divIcon({
+                            html: `
+                                <div class="custom-pin" style="--pin-color: ${conf.color};">
+                                    <div class="pin-logo flex items-center justify-center bg-white" style="color: ${conf.color};">
+                                        <span class="material-symbols-outlined" style="font-size: 32px;">${conf.icon}</span>
+                                    </div>
+                                </div>`,
+                            className: '', // Evita estilos extraños por defecto de Leaflet
+                            iconSize: [64, 80],
+                            iconAnchor: [32, 80],
+                            popupAnchor: [0, -70]
+                        })
                     });
-                } 
+
+                    // Al hacer clic, abrimos directamente la modal del servicio
+                    marker.on('click', () => {
+                        window.openModalServicio(srv);
+                    });
+                    
+                    markersGroup.addLayer(marker);
+                }
             });
+
+            
+            // --- NUEVO: LÓGICA DE FILTROS DINÁMICOS MEJORADA ---
+            // Evaluamos qué sobrevive si ignoramos un filtro en concreto
+
+            const servicioPasaFiltros = (s, ignorar) => {
+                if (ignorar !== 'texto' && estado.filtros.texto && !s.servicio.toLowerCase().includes(estado.filtros.texto)) return false;
+                if (ignorar !== 'entidad' && estado.entidadSeleccionada && s.entidad_id !== estado.entidadSeleccionada.entidad_id) return false;
+                if (ignorar !== 'entidad' && estado.filtros.entidad && s.entidad_id != estado.filtros.entidad) return false;
+                if (ignorar !== 'sector' && estado.filtros.sector && s.sector !== estado.filtros.sector) return false;
+                if (ignorar !== 'catalogo' && estado.filtros.catalogosSeleccionados.length > 0 && (!s.cod_catalogo || !estado.filtros.catalogosSeleccionados.includes(s.cod_catalogo))) return false;
+                if (ignorar !== 'provincia' && estado.filtros.provincia && !entidadesConSedesValidas.has(s.entidad_id)) return false;
+                return true;
+            };
+
+            // 1. Opciones válidas para SECTOR (ignorando el filtro de sector)
+            const sectConResultados = new Set(estado.servicios.filter(s => servicioPasaFiltros(s, 'sector')).map(s => s.sector));
+
+            // 2. Opciones válidas para CATÁLOGO (ignorando el filtro de catálogo)
+            const catConResultados = new Set(estado.servicios.filter(s => servicioPasaFiltros(s, 'catalogo')).map(s => String(s.cod_catalogo)));
+
+            // 3. Opciones válidas para ENTIDAD (ignorando el filtro de entidad)
+            const srvSinEntidad = estado.servicios.filter(s => servicioPasaFiltros(s, 'entidad'));
+            const idsValidasSinEntidad = new Set(srvSinEntidad.map(s => s.entidad_id));
+            const entsConResultados = new Set(estado.entidades.filter(e => {
+                if (estado.filtros.provincia && !entidadesConSedesValidas.has(e.entidad_id)) return false;
+                if ((estado.filtros.texto || estado.filtros.sector || estado.filtros.catalogosSeleccionados.length > 0) && !idsValidasSinEntidad.has(e.entidad_id)) return false;
+                return true;
+            }).map(e => String(e.entidad_id)));
+
+            // 4. Opciones válidas para PROVINCIA (ignorando el filtro de provincia)
+            const srvSinProvincia = estado.servicios.filter(s => servicioPasaFiltros(s, 'provincia'));
+            const idsValidasSinProvincia = new Set(srvSinProvincia.map(s => s.entidad_id));
+            const entsValidasSinProvincia = new Set(estado.entidades.filter(e => {
+                if (estado.filtros.entidad && e.entidad_id != estado.filtros.entidad) return false;
+                if ((estado.filtros.texto || estado.filtros.sector || estado.filtros.catalogosSeleccionados.length > 0) && !idsValidasSinProvincia.has(e.entidad_id)) return false;
+                return true;
+            }).map(e => String(e.entidad_id)));
+            
+            const provsConResultados = new Set(estado.sedes
+                .filter(s => entsValidasSinProvincia.has(String(s.entidad_id)))
+                .map(s => String(s.cod_provincia))
+            );
+
+            // 5. Aplicar visualmente
+            const actualizarSelect = (id, validSet, valorActual) => {
+                const select = document.getElementById(id);
+                if (!select) return;
+                
+                Array.from(select.options).forEach(opt => {
+                    if (opt.value === "") return;
+                    // Mantenemos visible la opción si tiene resultados O si es la que está actualmente seleccionada
+                    if (validSet.has(opt.value) || opt.value === String(valorActual)) {
+                        opt.style.display = '';
+                        opt.hidden = false;
+                        opt.disabled = false;
+                    } else {
+                        opt.style.display = 'none';
+                        opt.hidden = true;
+                        opt.disabled = true;
+                    }
+                });
+            };
+
+            actualizarSelect('filtro-provincia', provsConResultados, estado.filtros.provincia);
+            actualizarSelect('filtro-entidad', entsConResultados, estado.filtros.entidad);
+            actualizarSelect('filtro-sector', sectConResultados, estado.filtros.sector);
+
+            const catalogoContainer = document.getElementById('catalogo-checkboxes');
+            if (catalogoContainer) {
+                catalogoContainer.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                    const div = chk.closest('div');
+                    // Mantenemos visible el checkbox si tiene resultados O si está marcado
+                    if (catConResultados.has(chk.value) || chk.checked) {
+                        div.style.display = '';
+                    } else {
+                        div.style.display = 'none';
+                    }
+                });
+            }
+
         };
 
         const renderLista = (container, items, paginacion, renderFn) => {
@@ -283,7 +439,7 @@ if (document.getElementById('map')) {
             // 1. Buscamos si esta entidad tiene sedes
             const susSedes = estado.sedes.filter(s => {
                 if (s.entidad_id !== ent.entidad_id) return false;
-                if (estado.filtros.provincia && String(s.provincia_id) !== estado.filtros.provincia) return false;
+                if (estado.filtros.provincia && String(s.cod_provincia) !== estado.filtros.provincia) return false;
                 return true;
             });
             const tieneSedes = susSedes.length > 0;
@@ -447,28 +603,55 @@ if (document.getElementById('map')) {
             if (fSec) fSec.addEventListener('change', e => { estado.filtros.sector = e.target.value; render(); });
 
             const btnToggleFiltros = document.getElementById('btn-toggle-filtros');
-                if (btnToggleFiltros) {
-                    btnToggleFiltros.onclick = () => {
-                        const container = document.getElementById('contenedor-filtros');
-                        const isHidden = container.classList.contains('hidden');
-                        
-                        if (isHidden) {
-                            container.classList.remove('hidden');
-                            container.classList.add('flex');
-                            btnToggleFiltros.classList.add('bg-red-50', 'text-brand-red', 'border-red-200');
-                            btnToggleFiltros.classList.remove('bg-gray-100', 'text-gray-600');
-                        } else {
-                            container.classList.add('hidden');
-                            container.classList.remove('flex');
-                            btnToggleFiltros.classList.remove('bg-red-50', 'text-brand-red', 'border-red-200');
-                            btnToggleFiltros.classList.add('bg-gray-100', 'text-gray-600');
-                        }
-                    };
-                }
+            if (btnToggleFiltros) {
+                btnToggleFiltros.onclick = () => {
+                    const container = document.getElementById('contenedor-filtros');
+                    const isHidden = container.classList.contains('hidden');
+                    
+                    if (isHidden) {
+                        container.classList.remove('hidden');
+                        container.classList.add('flex');
+                        btnToggleFiltros.classList.add('bg-red-50', 'text-brand-red', 'border-red-200');
+                        btnToggleFiltros.classList.remove('bg-gray-100', 'text-gray-600');
+                    } else {
+                        container.classList.add('hidden');
+                        container.classList.remove('flex');
+                        btnToggleFiltros.classList.remove('bg-red-50', 'text-brand-red', 'border-red-200');
+                        btnToggleFiltros.classList.add('bg-gray-100', 'text-gray-600');
+                    }
+                };
+            }
+                
+            // --- NUEVO: Evento para el cambio de capa del mapa ---
+            const radiosMap = document.querySelectorAll('input[name="mapLayer"]');
+            radiosMap.forEach(r => {
+                r.addEventListener('change', () => {
+                    render(); // Forzamos redibujar el mapa y paneles al cambiar
+                });
+            });
 
             
             const btnCat = document.getElementById('btn-catalogo-dropdown');
             if (btnCat) btnCat.onclick = () => document.getElementById('catalogo-dropdown-list').classList.toggle('hidden');
+
+            // --- NUEVO: Lógica para limpiar solo el catálogo RESO ---
+            const btnClearCat = document.getElementById('btn-clear-catalogo');
+            if (btnClearCat) {
+                btnClearCat.onclick = (e) => {
+                    e.preventDefault(); // Evita comportamientos raros
+                    e.stopPropagation(); // Evita que el clic cierre el desplegable
+                    
+                    // 1. Vaciamos el array de filtros
+                    estado.filtros.catalogosSeleccionados = [];
+                    
+                    // 2. Desmarcamos visualmente todos los checkboxes
+                    const checkboxes = document.querySelectorAll('#catalogo-checkboxes input[type="checkbox"]');
+                    checkboxes.forEach(chk => chk.checked = false);
+                    
+                    // 3. Actualizamos el mapa y las listas
+                    actualizarFiltros();
+                };
+            }
             
             const btnLim = document.getElementById('btn-limpiar');
             if (btnLim) btnLim.onclick = () => window.location.reload();
@@ -587,7 +770,7 @@ if (document.getElementById('map')) {
             const btnLlegar = document.getElementById('modal-btn-llegar');
             if (s.latitud && s.longitud) {
                 btnLlegar.classList.remove('opacity-50', 'pointer-events-none');
-                btnLlegar.onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=$${s.latitud},${s.longitud}`);
+                btnLlegar.onclick = () => window.open(`https://www.google.com/maps/dir/?api=1&destination=${s.latitud},${s.longitud}`);
                 btnLlegar.innerHTML = `<span class="material-symbols-outlined text-[18px]">near_me</span> <span class="font-bold">Ir ahora</span>`;
             } else {
                 btnLlegar.classList.add('opacity-50', 'pointer-events-none');
