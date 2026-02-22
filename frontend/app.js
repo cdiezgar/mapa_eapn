@@ -214,7 +214,7 @@ if (document.getElementById('map')) {
             actualizarPaginacionUI('ent', entFiltradas.length, estado.paginacionEntidades);
             actualizarPaginacionUI('srv', srvFiltrados.length, estado.paginacionServicios);
 
-            // Limpiamos los marcadores antiguos
+ // Limpiamos los marcadores antiguos
             markersGroup.clearLayers();
 
             // 1. Averiguar qué toggle está seleccionado directamente del HTML
@@ -238,11 +238,10 @@ if (document.getElementById('map')) {
                     panelSrv.classList.remove('lg:hidden');
                     panelSrv.classList.add('lg:flex');
                 }
-                // Hacemos que el mapa se expanda para ocupar el hueco libre (de 2 columnas a 3)
+                
                 panelMap.classList.remove('lg:col-span-2');
                 panelMap.classList.add('lg:col-span-3');
                 
-                // Le decimos a Leaflet que recalcule su tamaño tras la animación
                 setTimeout(() => { if (map) map.invalidateSize(); }, 150);
             }
 
@@ -314,38 +313,7 @@ if (document.getElementById('map')) {
                 });
             }
 
-            // --- NUEVO: PINTAR MARCADORES DE SERVICIOS ---
-            srvFiltrados.forEach(srv => {
-                // Solo pintamos si el servicio tiene coordenadas propias válidas
-                if (srv.latitud && srv.longitud && !isNaN(srv.latitud) && !isNaN(srv.longitud) && srv.latitud !== 0) {
-                    
-                    // Recuperamos la configuración del sector (color e icono)
-                    const conf = CONFIG_SECTORES[srv.sector] || { color: "#666", icon: "circle" };
-                    
-                    const marker = L.marker([parseFloat(srv.latitud), parseFloat(srv.longitud)], {
-                        icon: L.divIcon({
-                            html: `
-                                <div class="custom-pin" style="--pin-color: ${conf.color};">
-                                    <div class="pin-logo flex items-center justify-center bg-white" style="color: ${conf.color};">
-                                        <span class="material-symbols-outlined" style="font-size: 32px;">${conf.icon}</span>
-                                    </div>
-                                </div>`,
-                            className: '', // Evita estilos extraños por defecto de Leaflet
-                            iconSize: [64, 80],
-                            iconAnchor: [32, 80],
-                            popupAnchor: [0, -70]
-                        })
-                    });
-
-                    // Al hacer clic, abrimos directamente la modal del servicio
-                    marker.on('click', () => {
-                        window.openModalServicio(srv);
-                    });
-                    
-                    markersGroup.addLayer(marker);
-                }
-            });
-
+            // --- NUEVO: LÓGICA DE FILTROS DINÁMICOS MEJORADA ---
             
             // --- NUEVO: LÓGICA DE FILTROS DINÁMICOS MEJORADA ---
             // Evaluamos qué sobrevive si ignoramos un filtro en concreto
