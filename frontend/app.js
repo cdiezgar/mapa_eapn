@@ -37,7 +37,7 @@ if (document.getElementById('map')) {
             servicios: [],
             catalogoCompleto: [],
             entidadSeleccionada: null,
-            filtros: { texto: "", entidad: "", sector: "", catalogosSeleccionados: [] },
+            filtros: { texto: "", entidad: "", sector: "", provincia: "", catalogosSeleccionados: [] },
             paginacionEntidades: { paginaActual: 1, itemsPorPagina: 20 },
             paginacionServicios: { paginaActual: 1, itemsPorPagina: 20 }
         };
@@ -112,17 +112,26 @@ if (document.getElementById('map')) {
             const { data: srv } = await supabase.from("vista_servicios").select("*").order("servicio");
             const { data: cat } = await supabase.from("catalogos_servicios").select("*").order("codigo");
             const { data: sds } = await supabase.from("sedes_entidades").select("*"); // <--- Petición de sedes
+            const { data: prov } = await supabase.from("provincia").select("*"); // <--- NUEVO 
 
             estado.entidades = ent || [];
             estado.servicios = srv || [];
             estado.catalogoCompleto = cat || [];
             estado.sedes = sds || []; // <--- Guardado de sedes. ¡Sin esto, sigue undefined!
-            
+            estado.provincias = prov || []; // <--- NUEVO
+
             renderFiltros();
             render();
         };
 
         const renderFiltros = () => {
+            const selProv = document.getElementById('filtro-provincia');
+            if (selProv) {
+                selProv.innerHTML = '<option value="">Todas</option>';
+                const provs = [...estado.provincias].sort((a,b) => a.provincia.localeCompare(b.provincia));
+                provs.forEach(p => selProv.innerHTML += `<option value="${p.cod_provincia}">${p.provincia}</option>`);
+            }
+
             const selEnt = document.getElementById('filtro-entidad');
             if (selEnt) {
                 selEnt.innerHTML = '<option value="">Todas las Entidades</option>';
@@ -168,18 +177,32 @@ if (document.getElementById('map')) {
         };
 
         const render = () => {
+            // 1. Identificamos qué sedes cumplen con el filtro de provincia
+            const sedesValidasPorProvincia = estado.filtros.provincia 
+                ? estado.sedes.filter(s => String(s.provincia_id) === estado.filtros.provincia)
+                : estado.sedes;
+            
+            // Creamos un set con los IDs de las entidades que SÍ tienen presencia en la provincia seleccionada
+            const entidadesConSedesValidas = new Set(sedesValidasPorProvincia.map(s => s.entidad_id));
+
+            // 2. Filtrar Servicios
             const srvFiltrados = estado.servicios.filter(s => {
                 if (estado.filtros.texto && !s.servicio.toLowerCase().includes(estado.filtros.texto)) return false;
                 if (estado.entidadSeleccionada && s.entidad_id !== estado.entidadSeleccionada.entidad_id) return false;
                 if (estado.filtros.entidad && s.entidad_id != estado.filtros.entidad) return false;
                 if (estado.filtros.sector && s.sector !== estado.filtros.sector) return false;
                 if (estado.filtros.catalogosSeleccionados.length > 0 && (!s.cod_catalogo || !estado.filtros.catalogosSeleccionados.includes(s.cod_catalogo))) return false;
+                // REGLA NUEVA: El servicio debe pertenecer a una entidad que tenga presencia en la provincia seleccionada
+                if (estado.filtros.provincia && !entidadesConSedesValidas.has(s.entidad_id)) return false;
                 return true;
             });
 
+            // 3. Filtrar Entidades
             const idsValidas = new Set(srvFiltrados.map(s => s.entidad_id));
             const entFiltradas = estado.entidades.filter(e => {
                 if (estado.filtros.entidad && e.entidad_id != estado.filtros.entidad) return false;
+                // REGLA NUEVA: La entidad debe tener al menos una sede en la provincia seleccionada
+                if (estado.filtros.provincia && !entidadesConSedesValidas.has(e.entidad_id)) return false;
                 if ((estado.filtros.texto || estado.filtros.sector || estado.filtros.catalogosSeleccionados.length > 0) && !idsValidas.has(e.entidad_id)) return false;
                 return true;
             });
@@ -194,7 +217,12 @@ if (document.getElementById('map')) {
             markersGroup.clearLayers();
 
             entFiltradas.forEach(ent => {
-                const susSedes = (estado.sedes || []).filter(s => s.entidad_id === ent.entidad_id);
+                // Modificado: Ahora filtra las sedes respetando la provincia seleccionada
+                const susSedes = estado.sedes.filter(s => {
+                    if (s.entidad_id !== ent.entidad_id) return false;
+                    if (estado.filtros.provincia && String(s.provincia_id) !== estado.filtros.provincia) return false;
+                    return true;
+                });
                 
                 // 1. Recuperamos el color corporativo (o fallback a rojo EAPN)
                 const color = ent.color_corporativo || '#7C3844';
@@ -231,8 +259,13 @@ if (document.getElementById('map')) {
                         crearMarcador(
                             parseFloat(sede.latitud), 
                             parseFloat(sede.longitud), 
-                            sede, 
-                            () => window.openModalSede(sede, ent)
+                            sede,
+                            () => {
+                                // Buscamos el nombre de la provincia antes de abrir la modal
+                                const provObj = estado.provincias.find(p => p.cod_provincia === sede.cod_provincia);
+                                sede.nombre_provincia = provObj ? provObj.provincia : '';
+                                window.openModalSede(sede, ent);
+                            }
                         );
                     });
                 } 
@@ -248,7 +281,11 @@ if (document.getElementById('map')) {
 
         const renderEntidadCard = (ent) => {
             // 1. Buscamos si esta entidad tiene sedes
-            const susSedes = estado.sedes.filter(s => s.entidad_id === ent.entidad_id);
+            const susSedes = estado.sedes.filter(s => {
+                if (s.entidad_id !== ent.entidad_id) return false;
+                if (estado.filtros.provincia && String(s.provincia_id) !== estado.filtros.provincia) return false;
+                return true;
+            });
             const tieneSedes = susSedes.length > 0;
 
             // Contenedor principal
@@ -298,14 +335,13 @@ if (document.getElementById('map')) {
 
                     // Click en una SEDE específica
                     row.onclick = (e) => {
-                        e.stopPropagation(); // Evitar que el click suba al padre
+                        e.stopPropagation(); 
+                        if(map && sede.latitud && sede.longitud) map.setView([sede.latitud, sede.longitud], 16);
                         
-                        // Centrar mapa en la sede
-                        if(map && sede.latitud && sede.longitud) {
-                            map.setView([sede.latitud, sede.longitud], 16);
-                        }
-                        
-                        // Abrir modal de sede (usando la función que creamos antes)
+                        // Buscamos el nombre de la provincia
+                        const provObj = estado.provincias.find(p => p.cod_provincia === sede.cod_provincia);
+                        sede.nombre_provincia = provObj ? provObj.provincia : '';
+
                         window.openModalSede(sede, ent);
                     };
                     body.appendChild(row);
@@ -400,6 +436,9 @@ if (document.getElementById('map')) {
         const initEventos = () => {
             const fTxt = document.getElementById('filtro-texto');
             if (fTxt) fTxt.addEventListener('input', e => { estado.filtros.texto = e.target.value.toLowerCase(); render(); });
+            
+            const fProv = document.getElementById('filtro-provincia');
+            if (fProv) fProv.addEventListener('change', e => { estado.filtros.provincia = e.target.value; render(); });
             
             const fEnt = document.getElementById('filtro-entidad');
             if (fEnt) fEnt.addEventListener('change', e => { estado.filtros.entidad = e.target.value; render(); });
@@ -586,7 +625,7 @@ window.openModalSede = (sede, ent) => {
                     <div class="text-[10px] text-gray-400 uppercase font-bold">Dirección</div>
                     <div class="text-sm font-bold text-gray-800">${sede.direccion || 'Dirección no disponible'}</div>
                     <div class="text-xs text-gray-500 mt-0.5">
-                        ${sede.codigo_postal || ''} ${sede.municipio || ''} ${sede.provincia ? `(${sede.provincia})` : ''}
+                        ${sede.codigo_postal || ''} ${sede.municipio || ''} ${sede.nombre_provincia ? `(${sede.nombre_provincia})` : ''}
                     </div>
                 </div>
             </div>

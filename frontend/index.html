@@ -39,6 +39,7 @@
             </div>
 
             <div id="contenedor-filtros" class="hidden lg:flex flex-wrap gap-2 items-end flex-1 w-full lg:w-auto border-t lg:border-t-0 pt-3 lg:pt-0 mt-2 lg:mt-0 border-dashed border-gray-300">
+                
                 <div class="flex flex-col grow sm:grow-0 w-full sm:w-auto">
                     <label for="filtro-texto" class="filter-label">Buscar servicio</label>
                     <div class="relative w-full">
@@ -46,15 +47,23 @@
                         <span class="material-symbols-outlined absolute left-1 top-1.5 text-gray-400 text-lg">search</span>
                     </div>
                 </div>
+
                 <div class="flex flex-col grow sm:grow-0 w-1/2 sm:w-auto pr-1 sm:pr-0">
+                    <label for="filtro-provincia" class="filter-label">Provincia</label>
+                    <select id="filtro-provincia" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-32 outline-none"></select>
+                </div>
+
+                <div class="flex flex-col grow sm:grow-0 w-1/2 sm:w-auto pl-1 sm:pl-0 sm:pr-0">
                     <label for="filtro-entidad" class="filter-label">Entidad</label>
                     <select id="filtro-entidad" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-40 outline-none max-w-full sm:max-w-none truncate"></select>
                 </div>
-                <div class="flex flex-col grow sm:grow-0 w-1/2 sm:w-auto pl-1 sm:pl-0">
+
+                <div class="flex flex-col grow sm:grow-0 w-1/2 sm:w-auto pr-1 sm:pr-0">
                     <label for="filtro-sector" class="filter-label">Sector</label>
                     <select id="filtro-sector" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-40 outline-none"></select>
                 </div>
-                <div class="flex flex-col relative group grow sm:grow-0 w-full sm:w-auto">
+
+                <div class="flex flex-col relative group grow sm:grow-0 w-1/2 sm:w-auto pl-1 sm:pl-0">
                     <label class="filter-label">Catálogo RESO</label>
                     <button id="btn-catalogo-dropdown" class="border rounded px-2 py-1.5 text-sm bg-gray-50 w-full sm:w-40 text-left flex justify-between items-center text-gray-700">
                         <span id="catalogo-selected-text" class="truncate">Seleccionar...</span>
@@ -68,6 +77,17 @@
                         <div id="catalogo-checkboxes" class="space-y-1"></div>
                     </div>
                 </div>
+                
+                <div class="flex items-end gap-2 ml-auto mt-2 lg:mt-0 w-full lg:w-auto justify-end">
+                    <button id="btn-ver-catalogo-completo-desktop" class="hidden lg:flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm bg-brand-red transition shadow-sm whitespace-nowrap">
+                        <span class="material-symbols-outlined text-sm">menu_book</span> <span>Catálogo</span>
+                    </button>
+                    
+                    <button id="btn-limpiar" class="flex items-center gap-1 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded text-sm transition text-gray-700">
+                        <span class="material-symbols-outlined text-sm">filter_alt_off</span>
+                    </button>
+                </div>
+            </div>
                 
                 <div class="flex items-end gap-2 ml-auto mt-2 lg:mt-0 w-full lg:w-auto justify-end">
                     <button id="btn-ver-catalogo-completo-desktop" class="hidden lg:flex items-center gap-1 px-3 py-1.5 text-white rounded text-sm bg-brand-red transition shadow-sm whitespace-nowrap">

@@ -7,7 +7,8 @@ let adminState = {
     entidades: [],
     sedes: [],
     servicios: [],
-    catalogo: []
+    catalogo: [],
+    provincias: [] // <--- NUEVO
 };
 
 let mapPicker = {
@@ -66,18 +67,19 @@ async function showAdminPanel(user) {
 }
 
 async function loadData() {
-    const [eRes, sRes, cRes, sedesRes] = await Promise.all([
+    const [eRes, sRes, cRes, sedesRes, provRes] = await Promise.all([
         supabase.from("eapn_entidad").select("*").order("denominacion"),
         supabase.from("vista_servicios").select("*").order("servicio"),
         supabase.from("catalogos_servicios").select("*").order("codigo"),
-        supabase.from("sedes_entidades").select("*")
+        supabase.from("sedes_entidades").select("*"),
+        supabase.from("provincia").select("*").order("provincia") // <--- NUEVO
     ]);
 
     adminState.entidades = eRes.data || [];
     adminState.servicios = sRes.data || [];
     adminState.sedes = sedesRes.data || [];
     adminState.catalogo = cRes.data || [];
-    
+    adminState.provincias = provRes.data || []; // <--- NUEVO
 
     const selEnt = document.getElementById('admin-select-entidad');
     selEnt.innerHTML = '<option value="">Seleccione Entidad...</option>';
@@ -93,6 +95,13 @@ async function loadData() {
         selEnt.innerHTML += opt;
         filterEnt.innerHTML += opt;
         selEntSede.innerHTML += opt;
+    });
+
+    // Rellenar select de Provincias
+    const selProv = document.getElementById('admin-select-provincia');
+    selProv.innerHTML = '<option value="">Seleccione Provincia...</option>';
+    adminState.provincias.forEach(p => {
+        selProv.innerHTML += `<option value="${p.cod_provincia}">${p.provincia}</option>`;
     });
 
     const selCat = document.getElementById('admin-select-catalogo');
@@ -403,7 +412,7 @@ function setEditMode(item) {
         f.entidad_id.value = item.entidad_id;
         f.direccion.value = item.direccion || '';
         f.municipio.value = item.municipio || '';
-        f.provincia.value = item.provincia || '';
+        f.cod_provincia.value = item.cod_provincia || '';
         f.codigo_postal.value = item.codigo_postal || '';
         f.telefono.value = item.telefono || '';
         f.email.value = item.email || '';
@@ -462,7 +471,7 @@ async function handleSave(e) {
         delete data.telefono;
         delete data.email;
     }
-    
+
     try {
         if (adminState.activeTab === 'tab-entidad') {
             let res;
