@@ -109,17 +109,26 @@ if (document.getElementById('map')) {
         };
 
         const cargarDatos = async () => {
-            const { data: ent } = await supabase.from("eapn_entidad").select("*").order("denominacion");
-            const { data: srv } = await supabase.from("vista_servicios").select("*").order("servicio");
-            const { data: cat } = await supabase.from("catalogos_servicios").select("*").order("codigo");
-            const { data: sds } = await supabase.from("sedes_entidades").select("*"); // <--- Petición de sedes
-            const { data: prov } = await supabase.from("provincia").select("*"); // <--- NUEVO 
+            // Lanzamos todas las peticiones a la vez usando Promise.all
+            const [
+                { data: ent },
+                { data: srv },
+                { data: cat },
+                { data: sds },
+                { data: prov }
+            ] = await Promise.all([
+                supabase.from("eapn_entidad").select("*").order("denominacion"),
+                supabase.from("vista_servicios").select("*").order("servicio"),
+                supabase.from("catalogos_servicios").select("*").order("codigo"),
+                supabase.from("sedes_entidades").select("*"),
+                supabase.from("provincia").select("*")
+            ]);
 
             estado.entidades = ent || [];
             estado.servicios = srv || [];
             estado.catalogoCompleto = cat || [];
-            estado.sedes = sds || []; // <--- Guardado de sedes. ¡Sin esto, sigue undefined!
-            estado.provincias = prov || []; // <--- NUEVO
+            estado.sedes = sds || []; 
+            estado.provincias = prov || []; 
 
             renderFiltros();
             render();
@@ -216,6 +225,7 @@ if (document.getElementById('map')) {
 
  // Limpiamos los marcadores antiguos
             markersGroup.clearLayers();
+            const nuevosMarcadores = []; // <-- NUEVO: Creamos un array temporal
 
             // 1. Averiguar qué toggle está seleccionado directamente del HTML
             const radioSeleccionado = document.querySelector('input[name="mapLayer"]:checked');
@@ -256,10 +266,9 @@ if (document.getElementById('map')) {
                     
                     const color = ent.color_corporativo || '#7C3844';
                     const styleVar = `--pin-color: ${color};`;
-
                     const crearMarcador = (lat, lng, item, clickCallback) => {
                         if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return;
-                        const marker = L.marker([lat, lng], { 
+                       const marker = L.marker([lat, lng], { 
                             icon: L.divIcon({ 
                                 html: `
                                     <div class="custom-pin" style="${styleVar}">
@@ -272,7 +281,9 @@ if (document.getElementById('map')) {
                             }) 
                         });
                         marker.on('click', clickCallback);
-                        markersGroup.addLayer(marker);
+
+                        // CAMBIA markersGroup.addLayer(marker) POR:
+                        nuevosMarcadores.push(marker);
                     };
 
                     if (susSedes.length > 0) {
@@ -308,10 +319,12 @@ if (document.getElementById('map')) {
                         });
 
                         marker.on('click', () => window.openModalServicio(srv));
-                        markersGroup.addLayer(marker);
+                        nuevosMarcadores.push(marker);
                     }
                 });
             }
+
+            markersGroup.addLayers(nuevosMarcadores);
 
             // --- NUEVO: LÓGICA DE FILTROS DINÁMICOS MEJORADA ---
             
